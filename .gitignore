@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# Local configuration. Credentials live here; the template is tracked.
+.env
+!.env.example
+
+# Benchmark run output (HARNESS2_RUNS_DIR default)
+runs/
+
+# User-created task partitions (scripts/split_tasks.py --output)
+splits/
+
+# Benchmark dependencies installed by harness2-setup. Only ASSETS.json,
+# PINNED.md, and README.md are tracked under dependencies/.
+dependencies/job-bench-eval/
+dependencies/harvey-labs/
+dependencies/workbuddy-bench/
+dependencies/opencode/
+dependencies/codex/
+dependencies/tools/
+
+# Logs
+*.log
+
+# Editor and OS
+.DS_Store
+CLAUDE.local.md
