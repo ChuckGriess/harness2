@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv venv *)",
+      "Bash(uv pip *)",
+      "Bash(python -m unittest *)",
+      "Bash(python3 -m unittest *)",
+      "Bash(ruff *)",
+      "Bash(uvx ruff *)",
+      "Bash(python scripts/check_provenance.py)",
+      "Bash(python scripts/split_tasks.py *)",
+      "Bash(harness2-demo *)",
+      "Bash(harness2-check *)",
+      "Bash(harness2-report *)",
+      "Bash(harness2 --help)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git branch *)",
+      "Bash(git show *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./dependencies/codex/bridge.json)",
+      "Read(./dependencies/**/bridge.json)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./**/credentials.json)",
+      "Read(./**/application_default_credentials.json)",
+      "Edit(./third_party/**)",
+      "Edit(./dependencies/**)",
+      "Bash(git push * --force)",
+      "Bash(git push --force *)",
+      "Bash(rm -rf *)",
+      "Bash(gcloud auth * print-access-token)"
+    ]
+  }
+}
