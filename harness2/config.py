@@ -162,6 +162,34 @@ CODEX_CONTAINER_URL = env("HARNESS2_CODEX_CONTAINER_URL", CODEX_BASE_URL)
 VERTEX_PROXY_KEY = env("HARNESS2_CODEX_API_KEY", "")
 CODEX_HOME_DIR = DEPENDENCIES / "codex" / "home"
 
+CA_MODEL = env("HARNESS2_CA_MODEL", "claude-sonnet-5-5")
+CA_EFFORT = env("HARNESS2_CA_EFFORT", "medium")
+CA_MAX_TURNS = env_int("HARNESS2_CA_MAX_TURNS", 60)
+CA_MAX_USD_CENTS = env_int("HARNESS2_CA_MAX_USD_CENTS", 300)
+CA_MAX_SEARCHES = env_int("HARNESS2_CA_MAX_SEARCHES", 20)
+CA_SCRIPT_TIMEOUT = 120
+# USD per MTok as (input, output, 5m cache write, cache read), from
+# platform.claude.com/docs/en/about-claude/pricing as checked 2026-10-21. Reported costs are
+# estimates; an unlisted model (e.g. a refusal fallback) is priced at the dearest listed rate.
+CLAUDE_PRICES = {
+    "claude-sonnet-5-5": (2.00, 10.00, 2.50, 0.10),
+    "claude-opus-5-5": (4.00, 20.00, 5.00, 0.20),
+}
+WEB_SEARCH_USD = 0.01
+
+
+def require_anthropic():
+    """The anthropic module, or ConfigError naming the extra that provides it."""
+    try:
+        import anthropic
+    except ImportError as e:
+        raise ConfigError(
+            "the Claude API substrate needs the anthropic SDK; install it with "
+            "uv pip install -e '.[claude]'"
+        ) from e
+    return anthropic
+
+
 WB_SOLVER_MODEL = "harness2/solver"
 WB_WEB_JUDGE = "harness2/judge"
 WB_RENDER_PY = sys.executable
