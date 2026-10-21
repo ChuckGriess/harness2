@@ -84,6 +84,15 @@ a{color:var(--accent)}
 <h2>Tasks</h2>
 <div class=card>
   <p class=muted style="margin:0 0 6px">Bite-sized TDD steps. Execute top to bottom: write a failing test → implement minimal → run → commit.</p>
+  <div class=area>Phase 0 results (2026-10-21)</div>
+  <ol class=tasks>
+    <li><input type=checkbox> DONE anthropic SDK: latest is 1.17.0 (requires Python &gt;=3.10) → pin [claude] = [&#x27;anthropic==1.17.0&#x27;]</li>
+    <li><input type=checkbox> DONE Pricing (platform.claude.com/docs/en/about-claude/pricing): Sonnet 5.5 input $2, output $10, 5m cache write $2.50, cache read $0.10 per MTok; web search $10 per 1,000 searches (errored searches unbilled); web fetch has no extra charge; code execution is free alongside the _20260209 web tools</li>
+    <li><input type=checkbox> DONE ns(): &#x27;ca&#x27; fits benchmark-substrate-modeK; update the error text that names only &#x27;oc&#x27; | &#x27;cx&#x27;</li>
+    <li><input type=checkbox> GAP run_sweep._check_identity records executor as SOLVER_MODEL_OC if oc else SOLVER_MODEL_CX, so a &#x27;ca&#x27; run would silently record the Codex model and a Sonnet version change would not block resume. Fix in Phase 3 with a regression test</li>
+    <li><input type=checkbox> DONE feeds that resolve (RSS/Atom/JSON): oreilly.com/radar/feed/, asimovaddendum.substack.com/feed, timoreilly.substack.com/feed, oneusefulthing.org/feed, karpathy.bearblog.dev/feed/, karpathy.github.io/feed.xml, YouTube Karpathy channel UCXUPKJO5MZQN11PqgIvyuvQ, fast.ai/index.xml, thinkingmachines.ai/blog/index.xml, huggingface.co/blog/feed.xml, databricks.com/feed, kozyrkov.medium.com/feed, decision.substack.com/feed, api.github.com tinker-cookbook releases, hn.algolia.com, export.arxiv.org</li>
+    <li><input type=checkbox> OPEN no RSS found for The Batch, Anthropic news, Dataiku or Answer.AI → mark them &#x27;page&#x27; sources (agent uses web_fetch on the index page); X and LinkedIn stay search-only</li>
+  </ol>
   <div class=area>Phase 0: verify before building</div>
   <ol class=tasks>
     <li><input type=checkbox> Confirm the current anthropic 1.x version on PyPI and pin it exactly in [claude]</li>
@@ -133,7 +142,7 @@ a{color:var(--accent)}
   </ol>
   <div class=area>Phase 5: first paid slice (needs explicit spend confirmation)</div>
   <ol class=tasks>
-    <li><input type=checkbox> Curate gold for the 3 seed weeks with scripts/radar_gold.py plus human review</li>
+    <li><input type=checkbox> Draft gold for the 3 seed weeks from watchlist sources with scripts/radar_gold.py; operator prunes</li>
     <li><input type=checkbox> harness2-check --bench radar --substrate ca</li>
     <li><input type=checkbox> harness2 --bench radar --substrate ca --k 1 --max-tasks 1 --only-domains research (≈ 4 rollouts + 3 improver stages); then harness2-judge / harness2-report with identical flags</li>
     <li><input type=checkbox> Record measured cost per task to size a full sweep before proposing one</li>
@@ -161,7 +170,7 @@ a{color:var(--accent)}
 <h2>Risks &amp;amp; rollback</h2>
 <div class=card>
   <ul>
-    <li><b>Risk:</b> Gold curation is manual and is the real bottleneck; thin gold rewards precision over recall — <b>mitigation:</b> Start with 12 tasks; radar_gold.py drafts candidates; track gold size per task in the report</li>
+    <li><b>Risk:</b> Gold curation is manual and is the real bottleneck; thin gold rewards precision over recall — <b>mitigation:</b> Start with 18 tasks; radar_gold.py drafts candidates from watchlist sources; track gold size per task in the report</li>
     <li><b>Risk:</b> Live web drift makes rollouts non-reproducible across days — <b>mitigation:</b> Closed past windows; the run_dir caches fetched sources and the judge grades against that cache; record the run date with results</li>
     <li><b>Risk:</b> Prompt injection from fetched pages steers the agent — <b>mitigation:</b> Narrow tool surface (no bash, no send, writes only to output/); container egress allowlist; delivery from host code only</li>
     <li><b>Risk:</b> Price table goes stale, so reported cost is wrong — <b>mitigation:</b> Dated CLAUDE_PRICES constant; Phase 0 verification; cost is labelled an estimate in report output</li>
