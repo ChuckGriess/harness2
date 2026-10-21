@@ -28,7 +28,7 @@ from unittest.mock import patch
 from harness2 import claude_loop as CL
 from harness2 import config
 from harness2.core import tree
-from harness2.substrate.claude_api import CA_SURFACE, CaSubstrate
+from harness2.substrate.claude_api import CA_SURFACE, CaSubstrate, web_tools
 
 MODEL = "claude-sonnet-5-5"
 ECHO = "import sys\nprint(' '.join(sys.argv[1:]))\n"
@@ -250,6 +250,13 @@ class CaSubstrateTests(unittest.TestCase):
                                    max_chars=10_000)
         self.assertIn("[ERROR] web_search: max_uses_exceeded", traj)
         self.assertNotIn("[OBSERVATION]", traj)
+
+    def test_search_and_fetch_caps_are_independent(self):
+        caps = {t["name"]: t["max_uses"] for t in web_tools(max_searches=3, max_fetches=40)}
+        self.assertEqual(caps, {"web_search": 3, "web_fetch": 40})
+        defaults = {t["name"]: t["max_uses"] for t in web_tools()}
+        self.assertEqual(defaults, {"web_search": config.CA_MAX_SEARCHES,
+                                    "web_fetch": config.CA_MAX_FETCHES})
 
     def test_materialise_rejects_foreign_install_mode(self):
         with self.assertRaises(ValueError):

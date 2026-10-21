@@ -61,6 +61,8 @@ class RadarCliTests(unittest.TestCase):
         self.assertIn("2026-10-12 to 2026-10-18", digest)
         self.assertEqual(digest.count("## Items"), 2)
         self.assertIn("open-models-and-tooling", digest)
+        self.assertEqual(digest.count("AI Radar"), 1, "topic digests' own titles are dropped")
+        self.assertNotIn("\n\n\n", digest)
         self.assertRegex(digest, r"Estimated cost: \$0\.\d{4}")
         self.assertEqual(len(client.calls), 4)
         first = client.calls[0]["messages"][0]["content"]

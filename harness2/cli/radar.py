@@ -126,8 +126,11 @@ def deliver(kind: str, text: str, subject: str) -> None:
 
 
 def _demote(md: str) -> str:
-    """Nest a topic digest's headings one level under the combined digest's."""
-    return "\n".join("#" + ln if ln.startswith("#") else ln for ln in md.splitlines())
+    """Nest a topic digest under the combined digest's topic heading, dropping its own title."""
+    lines = md.splitlines()
+    if lines and lines[0].startswith("# "):
+        lines = lines[1:]
+    return "\n".join("#" + ln if ln.startswith("#") else ln for ln in lines).strip()
 
 
 def build(args, client=None) -> tuple[Path, str]:
@@ -157,13 +160,13 @@ def build(args, client=None) -> tuple[Path, str]:
         shutil.rmtree(install.staging_dir, ignore_errors=True)
 
     cost = sum(r.cost_usd for _, r, _ in results)
-    parts = [f"# AI Radar: {since} to {until}\n"]
+    parts = [f"# AI Radar: {since} to {until}"]
     for topic, res, digest in results:
-        parts.append(f"## {topic}\n")
+        parts.append(f"## {topic}")
         parts.append(_demote(digest.strip()) if digest.strip() else
                      f"(no digest written: {res.error or 'empty output'})")
     failed = [f"{t} ({r.error})" for t, r, _ in results if r.error]
-    parts.append(f"\n---\nHarness: {tree}\nEstimated cost: ${cost:.4f} (Sonnet tokens plus "
+    parts.append(f"---\nHarness: {tree}\nEstimated cost: ${cost:.4f} (Sonnet tokens plus "
                  f"web search fees, from config.CLAUDE_PRICES)")
     if failed:
         parts.append("Topics that stopped early: " + "; ".join(failed))

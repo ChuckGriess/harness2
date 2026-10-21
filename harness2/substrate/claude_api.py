@@ -82,11 +82,12 @@ WORKSPACE = "workspace"
 OUTPUT = "output"
 
 
-def web_tools(max_uses: int = config.CA_MAX_SEARCHES) -> tuple[dict, ...]:
+def web_tools(max_searches: int = config.CA_MAX_SEARCHES,
+              max_fetches: int = config.CA_MAX_FETCHES) -> tuple[dict, ...]:
     """Anthropic-hosted web search and fetch; they run server-side, so need no container egress."""
     return (
-        {"type": "web_search_20260209", "name": "web_search", "max_uses": max_uses},
-        {"type": "web_fetch_20260209", "name": "web_fetch", "max_uses": max_uses,
+        {"type": "web_search_20260209", "name": "web_search", "max_uses": max_searches},
+        {"type": "web_fetch_20260209", "name": "web_fetch", "max_uses": max_fetches,
          "max_content_tokens": 20_000},
     )
 

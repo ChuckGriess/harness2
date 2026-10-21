@@ -64,7 +64,7 @@ Vertex. Install the extra with `uv pip install -e '.[claude]'`. Names only; keep
 | `HARNESS2_CA_IMPROVER_MODEL` | Improver model on the `claude_api` channel; defaults to `HARNESS2_CA_MODEL` |
 | `HARNESS2_JUDGE_MODEL` | Radar judge model; defaults to `HARNESS2_CA_MODEL` when unset |
 | `HARNESS2_CA_EFFORT` | Executor effort; defaults to `medium` |
-| `HARNESS2_CA_MAX_TURNS`, `HARNESS2_CA_MAX_USD_CENTS`, `HARNESS2_CA_MAX_SEARCHES` | Per-rollout caps (60 turns, 300 cents, 20 searches) |
+| `HARNESS2_CA_MAX_TURNS`, `HARNESS2_CA_MAX_USD_CENTS`, `HARNESS2_CA_MAX_SEARCHES`, `HARNESS2_CA_MAX_FETCHES` | Per-rollout caps (60 turns, 300 cents, 20 searches, 50 fetches) |
 | `HARNESS2_CA_IMPROVER_MAX_USD_CENTS` | Per-improver-session cap; defaults to 500 cents |
 | `HARNESS2_RADAR_GOLD_DIR` | Gold lists for judging; must be outside the repository |
 | `HARNESS2_RADAR_SLACK_WEBHOOK` | Slack delivery for `harness2-radar --deliver slack` |
