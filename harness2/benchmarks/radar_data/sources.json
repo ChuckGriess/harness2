@@ -1,0 +1,326 @@
+{
+ "verified": "2026-10-21",
+ "topics": {
+  "governance-and-economics": {
+   "hn": [
+    "AI disclosure",
+    "AI governance",
+    "AI economics"
+   ],
+   "arxiv": "cat:cs.CY AND abs:\"language model\""
+  },
+  "education-and-skills": {
+   "hn": [
+    "AI course",
+    "fast.ai",
+    "deeplearning.ai"
+   ],
+   "arxiv": ""
+  },
+  "open-models-and-tooling": {
+   "hn": [
+    "open weights",
+    "fine-tuning",
+    "Hugging Face"
+   ],
+   "arxiv": "cat:cs.CL AND abs:\"open-weight\""
+  },
+  "agents-and-workflows": {
+   "hn": [
+    "AI agents",
+    "agentic workflow"
+   ],
+   "arxiv": "cat:cs.AI AND abs:agentic"
+  },
+  "safety-and-interpretability": {
+   "hn": [
+    "interpretability",
+    "AI safety"
+   ],
+   "arxiv": "cat:cs.LG AND abs:interpretability"
+  },
+  "enterprise-data-and-ai": {
+   "hn": [
+    "Databricks",
+    "Dataiku"
+   ],
+   "arxiv": ""
+  },
+  "frontier-applications": {
+   "hn": [
+    "OpenAI API",
+    "Gemini API",
+    "Claude API",
+    "Mistral",
+    "Llama"
+   ],
+   "arxiv": ""
+  }
+ },
+ "entities": [
+  {
+   "name": "Tim O'Reilly",
+   "topics": [
+    "governance-and-economics"
+   ],
+   "feeds": [
+    "https://asimovaddendum.substack.com/feed",
+    "https://timoreilly.substack.com/feed"
+   ],
+   "repos": [],
+   "pages": [
+    "https://www.oreilly.com/tim/"
+   ],
+   "search_only": [
+    "linkedin.com/in/timo3"
+   ]
+  },
+  {
+   "name": "Andrew Ng",
+   "topics": [
+    "education-and-skills",
+    "agents-and-workflows"
+   ],
+   "feeds": [],
+   "repos": [],
+   "pages": [
+    "https://www.deeplearning.ai/the-batch/"
+   ],
+   "search_only": [
+    "x.com/AndrewYNg",
+    "LinkedIn"
+   ]
+  },
+  {
+   "name": "Cassie Kozyrkov",
+   "topics": [
+    "agents-and-workflows"
+   ],
+   "feeds": [
+    "https://kozyrkov.medium.com/feed",
+    "https://decision.substack.com/feed"
+   ],
+   "repos": [],
+   "pages": [],
+   "search_only": [
+    "LinkedIn"
+   ]
+  },
+  {
+   "name": "Ethan Mollick",
+   "topics": [
+    "agents-and-workflows"
+   ],
+   "feeds": [
+    "https://www.oneusefulthing.org/feed"
+   ],
+   "repos": [],
+   "pages": [],
+   "search_only": [
+    "X"
+   ]
+  },
+  {
+   "name": "Andrej Karpathy",
+   "topics": [
+    "open-models-and-tooling",
+    "education-and-skills"
+   ],
+   "feeds": [
+    "https://karpathy.bearblog.dev/feed/",
+    "https://karpathy.github.io/feed.xml",
+    "https://www.youtube.com/feeds/videos.xml?channel_id=UCXUPKJO5MZQN11PqgIvyuvQ"
+   ],
+   "repos": [],
+   "pages": [
+    "https://github.com/karpathy"
+   ],
+   "search_only": [
+    "X"
+   ]
+  },
+  {
+   "name": "Jeremy Howard",
+   "topics": [
+    "education-and-skills",
+    "open-models-and-tooling"
+   ],
+   "feeds": [
+    "https://www.fast.ai/index.xml"
+   ],
+   "repos": [],
+   "pages": [
+    "https://www.answer.ai/"
+   ],
+   "search_only": [
+    "X",
+    "fast.ai forums"
+   ]
+  },
+  {
+   "name": "O'Reilly Media",
+   "topics": [
+    "education-and-skills",
+    "governance-and-economics"
+   ],
+   "feeds": [
+    "https://www.oreilly.com/radar/feed/"
+   ],
+   "repos": [],
+   "pages": [],
+   "search_only": [
+    "AI Codecon"
+   ]
+  },
+  {
+   "name": "DeepLearning.AI",
+   "topics": [
+    "education-and-skills"
+   ],
+   "feeds": [],
+   "repos": [],
+   "pages": [
+    "https://www.deeplearning.ai/the-batch/",
+    "https://www.deeplearning.ai/courses/"
+   ],
+   "search_only": [
+    "community.deeplearning.ai"
+   ]
+  },
+  {
+   "name": "Thinking Machines Lab",
+   "topics": [
+    "open-models-and-tooling"
+   ],
+   "feeds": [
+    "https://thinkingmachines.ai/blog/index.xml"
+   ],
+   "repos": [
+    "thinking-machines-lab/tinker-cookbook"
+   ],
+   "pages": [
+    "https://thinkingmachines.ai/news/",
+    "https://tinker-docs.thinkingmachines.ai/"
+   ],
+   "search_only": []
+  },
+  {
+   "name": "Hugging Face",
+   "topics": [
+    "open-models-and-tooling"
+   ],
+   "feeds": [
+    "https://huggingface.co/blog/feed.xml"
+   ],
+   "repos": [],
+   "pages": [],
+   "search_only": []
+  },
+  {
+   "name": "Anthropic",
+   "topics": [
+    "safety-and-interpretability",
+    "frontier-applications"
+   ],
+   "feeds": [],
+   "repos": [
+    "anthropics/anthropic-sdk-python",
+    "modelcontextprotocol/modelcontextprotocol"
+   ],
+   "pages": [
+    "https://www.anthropic.com/news",
+    "https://www.anthropic.com/research",
+    "https://docs.claude.com/en/release-notes/overview"
+   ],
+   "search_only": []
+  },
+  {
+   "name": "Databricks",
+   "topics": [
+    "enterprise-data-and-ai"
+   ],
+   "feeds": [
+    "https://www.databricks.com/feed"
+   ],
+   "repos": [],
+   "pages": [],
+   "search_only": []
+  },
+  {
+   "name": "Dataiku",
+   "topics": [
+    "enterprise-data-and-ai"
+   ],
+   "feeds": [],
+   "repos": [],
+   "pages": [
+    "https://blog.dataiku.com/",
+    "https://www.dataiku.com/stories/"
+   ],
+   "search_only": []
+  },
+  {
+   "name": "OpenAI",
+   "topics": [
+    "frontier-applications"
+   ],
+   "feeds": [
+    "https://openai.com/news/rss.xml"
+   ],
+   "repos": [
+    "openai/openai-python",
+    "openai/openai-agents-python"
+   ],
+   "pages": [
+    "https://platform.openai.com/docs/changelog"
+   ],
+   "search_only": []
+  },
+  {
+   "name": "Google DeepMind",
+   "topics": [
+    "frontier-applications"
+   ],
+   "feeds": [
+    "https://deepmind.google/blog/rss.xml",
+    "https://developers.googleblog.com/feeds/posts/default/"
+   ],
+   "repos": [
+    "googleapis/python-genai",
+    "google/adk-python"
+   ],
+   "pages": [
+    "https://ai.google.dev/gemini-api/docs/changelog"
+   ],
+   "search_only": []
+  },
+  {
+   "name": "Meta",
+   "topics": [
+    "frontier-applications"
+   ],
+   "feeds": [],
+   "repos": [
+    "meta-llama/llama-stack"
+   ],
+   "pages": [
+    "https://ai.meta.com/blog/"
+   ],
+   "search_only": []
+  },
+  {
+   "name": "Mistral",
+   "topics": [
+    "frontier-applications"
+   ],
+   "feeds": [],
+   "repos": [
+    "mistralai/client-python"
+   ],
+   "pages": [
+    "https://mistral.ai/news"
+   ],
+   "search_only": []
+  }
+ ]
+}

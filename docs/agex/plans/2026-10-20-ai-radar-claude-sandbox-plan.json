@@ -40,23 +40,23 @@
       "state": "new"
     },
     {
-      "path": "harness2/benchmarks/radar_tasks.json",
+      "path": "harness2/benchmarks/radar_data/radar_tasks.json",
       "responsibility": "Task table: id, window_start, window_end, domain (one of the six watchlist topics), focus notes. Contains no answers",
       "state": "new"
     },
     {
-      "path": "assets/radar/watchlist.md",
+      "path": "harness2/benchmarks/radar_data/watchlist.md",
       "responsibility": "Operator's watchlist verbatim (lens, people, organizations); injected into every task prompt; never in the editable tree",
       "state": "new"
     },
     {
-      "path": "assets/radar/sources.json",
+      "path": "harness2/benchmarks/radar_data/sources.json",
       "responsibility": "Entity/topic → verified feed URLs, repos and channel ids, with 'search-only' markers for X/LinkedIn-only voices; read by fetchers, gold drafting and allowlist generation",
       "state": "new"
     },
     {
       "path": "MANIFEST.in",
-      "responsibility": "Ship assets/radar/*.md and *.json in the sdist",
+      "responsibility": "Ship harness2/benchmarks/radar_data/*.md and *.json in the sdist",
       "state": "modified"
     },
     {
@@ -148,7 +148,7 @@
       "area": "Phase 2: radar benchmark + judge",
       "steps": [
         "Write failing test: task_prompt and the proposer workspace contain no gold bytes, and leak_globs covers gold.json",
-        "Write assets/radar/watchlist.md (operator's list verbatim) and assets/radar/sources.json (feeds verified in Phase 0); failing test first for watchlist↔sources↔allowlist consistency",
+        "Write harness2/benchmarks/radar_data/watchlist.md (operator's list verbatim) and harness2/benchmarks/radar_data/sources.json (feeds verified in Phase 0); failing test first for watchlist↔sources↔allowlist consistency",
         "Write radar_tasks.json with 21 seed tasks (3 closed weeks × 7 topics); add a train/test partition via scripts/split_tasks.py",
         "Build the base harness tree: systemprompt.md, guardrails.md, tool_guidance.md, skills/triage-release/SKILL.md, scripts/{arxiv,gh_releases,rss,hn}.py (stdlib, timeouts, non-zero exit on failure)",
         "Write BenchPrompts wording in terms of the work (tracking AI releases for a CTO), avoiding the validator's banned words (benchmark, evaluation, grader, rubric, score)",

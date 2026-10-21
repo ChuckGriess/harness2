@@ -176,6 +176,8 @@ CLAUDE_PRICES = {
     "claude-opus-5-5": (4.00, 20.00, 5.00, 0.20),
 }
 WEB_SEARCH_USD = 0.01
+RADAR_GOLD_DIR = env("HARNESS2_RADAR_GOLD_DIR", "")
+RADAR_JUDGE_MODEL = JUDGE_MODEL or CA_MODEL
 
 
 def require_anthropic():
