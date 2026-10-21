@@ -9,7 +9,7 @@
     "R2. The editable surface for 'ca' is the familiar c1..c8 shape: systemprompt.md, guardrails.md, LongTermMEMORY.md, tool_descriptions/tool_guidance.md, skills/<name>/SKILL.md and scripts/*.py. The always-on files are composed into the system prompt. The improver can edit the feed-fetcher scripts as harness components.",
     "R3. The agent's tools: server-side web_search_20260209 and web_fetch_20260209, with max_uses capped per rollout. Client tools: read_file and list_dir, scoped to the workspace; write_file, scoped to output/ only; load_skill; run_script, which runs only the scripts/*.py present at materialise time, as an argument list with a timeout. Nothing else: no bash, no send or deliver tool.",
     "R4. The base harness ships stdlib-only fetchers (urllib plus xml.etree): an RSS/Atom fetcher (Substack /feed endpoints, the O'Reilly Radar, fast.ai, Hugging Face, Databricks and Dataiku blogs), GitHub releases and commits for watched repos (e.g. thinking-machines-lab/tinker-cookbook, karpathy/*), YouTube channel feeds, arXiv cs.AI/cs.CL/cs.LG listings, and Hacker News via the Algolia API. X and LinkedIn are not fetched (login walls and ToS); web_search covers them indirectly.",
-    "R5. New benchmark 'radar' (harness2/benchmarks/radar.py) implements BenchmarkAdapter. A task is a closed past window × a topic domain. The six domains come from the watchlist's focus areas: governance-and-economics, education-and-skills, open-models-and-tooling, agents-and-workflows, safety-and-interpretability, enterprise-data-and-ai. The deliverable is output/digest.md: dated items, each with a one-line why-it-matters read through the watchlist's lens, plus at least one source URL.",
+    "R5. New benchmark 'radar' (harness2/benchmarks/radar.py) implements BenchmarkAdapter. A task is a closed past window × a topic domain. Seven domains: six from the watchlist's focus areas (governance-and-economics, education-and-skills, open-models-and-tooling, agents-and-workflows, safety-and-interpretability, enterprise-data-and-ai) plus frontier-applications (OpenAI, Google DeepMind, Meta, Mistral, Anthropic). frontier-applications covers what practitioners can build with today (API, SDK and tool releases, pricing and limit changes, deprecations, changelogs) and excludes leaderboard claims, funding news and speculation. The deliverable is output/digest.md: dated items, each with a one-line why-it-matters read through the watchlist's lens, plus at least one source URL.",
     "R6. Gold sets live outside the repo, under HARNESS2_RADAR_GOLD_DIR/<task_id>/gold.json, one list of must-know items per task. scripts/radar_gold.py drafts each list from the watchlist's own sources (sources.json) for that window, and the operator prunes it before the list counts. The improver, the selector and the agent never see the gold lists: listed in leak_globs and never read by task_prompt or task_files.",
     "R13. The watchlist is user-owned input, not an editable harness component. assets/radar/watchlist.md stores the operator's lens, people and organizations verbatim and is injected into every task prompt. assets/radar/sources.json maps each watched entity and topic to verified feed URLs and repos, and is the single machine-readable list that fetchers, gold drafting and the proxy allowlist all read. The improver can change how the agent covers the watchlist (scripts, skills, prompts), never who or what is on it.",
     "R7. The judge (adapter.score) uses Claude (HARNESS2_JUDGE_MODEL, default claude-sonnet-5-5) to grade the selected run's digest against gold.json and the run's own fetched-source cache. It returns recall, precision (claims supported by a cited, fetched source), in-window rate and duplicate count. A judge failure returns None.",
@@ -32,20 +32,62 @@
     "A10. `uvx ruff check .`, `python -m unittest discover -s tests` and `python scripts/check_provenance.py` all pass. Every new .py/.sh file carries the Apache header, a contract docstring and `from __future__ import annotations`."
   ],
   "failure_modes": [
-    { "label": "Gold leakage to improver/selector", "assertion": "No gold.json bytes appear in task_prompt, task_files, the proposer workspace or the selector prompt (grep the staged dirs in a test)." },
-    { "label": "Judge failure coerced to zero", "assertion": "A judge exception or malformed JSON yields score None, and the report denominator drops that task." },
-    { "label": "Selection sees the judge", "assertion": "core/* and the selection path never import radar.score or core/judge (an import-graph assertion, same as the existing failed-selection test)." },
-    { "label": "Tool sandbox escape", "assertion": "Path traversal, absolute paths, symlinks out of the workspace, and unknown script names are all rejected as is_error tool_results." },
-    { "label": "Prompt injection reaching delivery", "assertion": "The agent has no network-send tool. Delivery runs only from harness2-radar host code behind --deliver, and benchmark execute() never calls delivery code (patched-out sender raises if touched)." },
-    { "label": "Runaway cost / infinite loop", "assertion": "The loop stops at HARNESS2_CA_MAX_TURNS or the USD cap, marks the run ok=False with the error recorded, and the ledger still counts the rollout." },
-    { "label": "Server-tool error treated as success", "assertion": "A web_search_tool_result whose content is an error object (e.g. max_uses_exceeded) renders as [ERROR] in the trajectory, not as results." },
-    { "label": "Unhandled stop reasons", "assertion": "refusal, max_tokens and pause_turn are each handled: refusal ends the run with error recorded, pause_turn resumes, max_tokens is recorded. None of them crashes or silently counts as delivered." },
-    { "label": "Runtime dependency creep", "assertion": "pyproject dependencies == [], and harness2 imports without anthropic installed." },
-    { "label": "Secret exposure", "assertion": "The image has no ANTHROPIC_API_KEY or webhook baked in (docker history / inspect contain no secret values). Trajectories and run_dirs never contain env values. The proposer's _DROP_ENV behaviour is unchanged for claude_cli." },
-    { "label": "Egress allowlist bypass", "assertion": "The harness container has no default route (internal network only). Direct-to-IP and non-allowlisted hosts fail from inside the container." },
-    { "label": "Incompatible resume after model change", "assertion": "Changing HARNESS2_CA_MODEL with the same HARNESS2_RUNS_DIR is blocked by the saved-configuration check, as for other substrates." },
-    { "label": "Watchlist drift between files", "assertion": "Every entity named in watchlist.md has a sources.json entry (or an explicit 'search-only' marker), every sources.json host is in the proxy allowlist, and a test fails on any mismatch." },
-    { "label": "Fetcher network flakiness", "assertion": "Fetcher scripts time out and exit non-zero with a readable stderr line. run_script returns it as is_error, and the rollout continues." }
+    {
+      "label": "Gold leakage to improver/selector",
+      "assertion": "No gold.json bytes appear in task_prompt, task_files, the proposer workspace or the selector prompt (grep the staged dirs in a test)."
+    },
+    {
+      "label": "Judge failure coerced to zero",
+      "assertion": "A judge exception or malformed JSON yields score None, and the report denominator drops that task."
+    },
+    {
+      "label": "Selection sees the judge",
+      "assertion": "core/* and the selection path never import radar.score or core/judge (an import-graph assertion, same as the existing failed-selection test)."
+    },
+    {
+      "label": "Tool sandbox escape",
+      "assertion": "Path traversal, absolute paths, symlinks out of the workspace, and unknown script names are all rejected as is_error tool_results."
+    },
+    {
+      "label": "Prompt injection reaching delivery",
+      "assertion": "The agent has no network-send tool. Delivery runs only from harness2-radar host code behind --deliver, and benchmark execute() never calls delivery code (patched-out sender raises if touched)."
+    },
+    {
+      "label": "Runaway cost / infinite loop",
+      "assertion": "The loop stops at HARNESS2_CA_MAX_TURNS or the USD cap, marks the run ok=False with the error recorded, and the ledger still counts the rollout."
+    },
+    {
+      "label": "Server-tool error treated as success",
+      "assertion": "A web_search_tool_result whose content is an error object (e.g. max_uses_exceeded) renders as [ERROR] in the trajectory, not as results."
+    },
+    {
+      "label": "Unhandled stop reasons",
+      "assertion": "refusal, max_tokens and pause_turn are each handled: refusal ends the run with error recorded, pause_turn resumes, max_tokens is recorded. None of them crashes or silently counts as delivered."
+    },
+    {
+      "label": "Runtime dependency creep",
+      "assertion": "pyproject dependencies == [], and harness2 imports without anthropic installed."
+    },
+    {
+      "label": "Secret exposure",
+      "assertion": "The image has no ANTHROPIC_API_KEY or webhook baked in (docker history / inspect contain no secret values). Trajectories and run_dirs never contain env values. The proposer's _DROP_ENV behaviour is unchanged for claude_cli."
+    },
+    {
+      "label": "Egress allowlist bypass",
+      "assertion": "The harness container has no default route (internal network only). Direct-to-IP and non-allowlisted hosts fail from inside the container."
+    },
+    {
+      "label": "Incompatible resume after model change",
+      "assertion": "Changing HARNESS2_CA_MODEL with the same HARNESS2_RUNS_DIR is blocked by the saved-configuration check, as for other substrates."
+    },
+    {
+      "label": "Watchlist drift between files",
+      "assertion": "Every entity named in watchlist.md has a sources.json entry (or an explicit 'search-only' marker), every sources.json host is in the proxy allowlist, and a test fails on any mismatch."
+    },
+    {
+      "label": "Fetcher network flakiness",
+      "assertion": "Fetcher scripts time out and exit non-zero with a readable stderr line. run_script returns it as is_error, and the rollout continues."
+    }
   ],
   "scope": {
     "route": "SOLO",
@@ -91,6 +133,11 @@
       "decision": "Watchlist-first coverage, through Tim O'Reilly's lens ('create more value than you capture'), with six topic domains derived from it",
       "why": "Your choice: start from the companies, people and topics you care about rather than a generic AI news firehose. The topic domains double as Harness²'s library grouping unit, and drafting gold from watched sources cuts curation down to pruning a list.",
       "rejected": "Generic domains (models, dev tools, research, infra): broad but off-lens, and the gold lists would have to be built from scratch."
+    },
+    {
+      "decision": "Add a frontier-applications topic built on an 'application, not hype' rule",
+      "why": "Your choice. Frontier-lab releases matter only when they change what practitioners can build. Sourcing from SDK releases and changelogs, rather than press posts, enforces that structurally, and the judge's precision check penalises hype items that aren't in the gold list.",
+      "rejected": "Treating every frontier-lab announcement as news: high volume and off-lens. Leaving the labs out entirely: misses API changes that affect real work."
     },
     {
       "decision": "Reuse install_mode 'workspace_agents_md' for 'ca' instead of adding a new mode",
