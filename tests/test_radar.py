@@ -105,6 +105,17 @@ class RadarTests(unittest.TestCase):
                         self.assertTrue(any(part in e["name"] or e["name"] in part
                                             for e in data["entities"]), part)
 
+    def test_proxy_allowlist_covers_every_fetched_host(self):
+        from urllib.parse import urlparse
+
+        repo = Path(radar.__file__).resolve().parents[2]
+        allow = set((repo / "docker/proxy/allowlist.txt").read_text().split())
+        data = json.loads((radar.DATA / "sources.json").read_text())
+        need = {urlparse(u).hostname for e in data["entities"] for u in e["feeds"]}
+        need |= {"api.anthropic.com", "api.github.com", "hn.algolia.com", "export.arxiv.org"}
+        self.assertEqual(sorted(need - allow), [], "add these hosts to docker/proxy/allowlist.txt")
+        self.assertNotIn("hooks.slack.com", allow, "delivery hosts belong in delivery.txt only")
+
     def test_base_harness_is_valid(self):
         a = radar.RadarAdapter()
         base = tree.read_tree(CA_SURFACE, a.base_harness())
@@ -201,6 +212,45 @@ class RadarTests(unittest.TestCase):
                 judge.Scored("t2", "agg", 1, "agg1", "r", False, error="judge failed")]
         (s,) = report.summarise(rows)
         self.assertEqual((s.n, s.n_ungraded, s.score), (1, 1, 75.0))
+
+
+class GoldDraftTests(unittest.TestCase):
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location(
+            "radar_gold", Path(__file__).resolve().parents[1] / "scripts" / "radar_gold.py")
+        self.mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.mod)
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+
+    def test_parse_dedupes_and_skips_noise(self):
+        text = ("2026-10-15 | OpenAI | A | https://a\n! unreachable: X https://x (URLError)\n"
+                "2026-10-16 | HN | A again | https://a\n# pages to check with web_fetch:\n"
+                "Meta: https://ai.meta.com/blog/\n2026-10-17 | Anthropic | B | https://b\n")
+        got = self.mod.parse_lines(text)
+        self.assertEqual([(i["id"], i["url"]) for i in got], [("g1", "https://a"), ("g2", "https://b")])
+
+    def test_gold_dir_inside_repo_is_refused(self):
+        from harness2 import config
+
+        with self.assertRaises(SystemExit) as cm:
+            self.mod.gold_root(str(config.ROOT / "runs" / "gold"))
+        self.assertIn("inside the repository", str(cm.exception))
+        self.assertEqual(self.mod.gold_root(str(self.root)), self.root.resolve())
+
+    def test_promote_validates_ids(self):
+        task = "2026-10-12/frontier-applications"
+        (self.root / task).mkdir(parents=True)
+        draft = self.root / task / "gold.draft.json"
+        draft.write_text(json.dumps({"items": [{"id": "g1"}, {"id": "g1"}]}))
+        with self.assertRaises(SystemExit):
+            self.mod.promote(task, self.root)
+        self.assertFalse((self.root / task / "gold.json").exists())
+        draft.write_text(json.dumps({"items": [{"id": "g1", "title": "kept"}]}))
+        self.mod.promote(task, self.root)
+        a = radar.RadarAdapter(gold_dir=self.root)
+        self.assertEqual(a._gold(task), [{"id": "g1", "title": "kept"}])
 
 
 class FetcherTests(unittest.TestCase):

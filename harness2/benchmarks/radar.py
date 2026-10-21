@@ -140,6 +140,19 @@ def window_of(task_id: str) -> tuple[date, date]:
     raise ValueError(f"no window starts on {since!r}; known windows: {windows}")
 
 
+def render_prompt(topic: str, since: date, until: date, *, label: str = "") -> str:
+    """The task as the agent receives it: topic, inclusive window and the watchlist."""
+    watchlist = (DATA / "watchlist.md").read_text(encoding="utf-8").strip()
+    return (
+        f"# TASK {label or f'{since}/{topic}'}\n"
+        f"Topic: {topic}\nWindow: {since} to {until} (inclusive)\n\n"
+        f"Write output/digest.md covering what the watched sources for this topic shipped, "
+        f"published or decided in the window. sources.json in the workspace maps each "
+        f"person and organization to their feeds, repos and pages.\n\n"
+        f"## Watchlist\n{watchlist}\n"
+    )
+
+
 def radar_spec() -> BenchSpec:
     """The radar BenchSpec. A value, not a code path."""
     channel = resolve_channel_model(
@@ -220,16 +233,7 @@ class RadarAdapter:
 
     def task_prompt(self, task_id: str) -> str:
         since, until = window_of(task_id)
-        topic = self.domain_of(task_id)
-        watchlist = (DATA / "watchlist.md").read_text(encoding="utf-8").strip()
-        return (
-            f"# TASK {task_id}\n"
-            f"Topic: {topic}\nWindow: {since} to {until} (inclusive)\n\n"
-            f"Write output/digest.md covering what the watched sources for this topic shipped, "
-            f"published or decided in the window. sources.json in the workspace maps each "
-            f"person and organization to their feeds, repos and pages.\n\n"
-            f"## Watchlist\n{watchlist}\n"
-        )
+        return render_prompt(self.domain_of(task_id), since, until, label=task_id)
 
     def task_files(self, task_id: str) -> Path | None:
         return None
@@ -237,7 +241,8 @@ class RadarAdapter:
     def _run_dir(self, run_id: str) -> Path:
         return self.spec.runs_root / "results" / run_id
 
-    def _ctx(self) -> dict[str, str]:
+    def workspace_files(self) -> dict[str, str]:
+        """Operator-owned inputs every rollout's workspace receives, as materialise ctx."""
         return {
             f"file:{name}": (DATA / name).read_text(encoding="utf-8")
             for name in ("sources.json", "watchlist.md")
@@ -245,7 +250,8 @@ class RadarAdapter:
 
     def _install(self, harness_dir: Path | None) -> Install:
         return self.substrate.materialise(
-            Path(harness_dir) if harness_dir else self.base_harness(), self.spec, self._ctx()
+            Path(harness_dir) if harness_dir else self.base_harness(), self.spec,
+            self.workspace_files(),
         )
 
     def _launch(self, req: RunRequest, install: Install) -> list[Path]:
