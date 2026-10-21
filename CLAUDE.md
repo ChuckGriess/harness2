@@ -161,9 +161,6 @@ picks its own free port.
 
 ## Known Gaps
 
-- `.env.example` is referenced by `README.md`, `MANIFEST.in`, and `config.require()`'s error
-  text but is **not present in the repo**. Setup instructions that say `cp .env.example .env`
-  will fail. Env var names are documented in `docs/SETUP.md#models-and-credentials`.
 - No `.gitignore`. `runs/`, `__pycache__/`, and `harness2.egg-info/` show as untracked in
   `git status` — never stage them.
 - No CI. Run `uvx ruff check .`, `python -m unittest discover -s tests`, and
