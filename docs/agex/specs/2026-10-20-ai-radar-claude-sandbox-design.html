@@ -1,0 +1,185 @@
+<!doctype html><html lang=en><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>Design spec</title>
+<style>
+:root{
+  --bg:#0f1117;--panel:#171a23;--panel2:#1e222e;--line:#2a2f3d;
+  --ink:#e7e9ee;--ink2:#9aa3b2;--ink3:#6b7384;
+  --solo:#6366f1;--roster:#f59e0b;--good:#34d399;--accent:#818cf8;--warn:#f87171;
+}
+*{box-sizing:border-box}
+body{font:15px/1.6 ui-sans-serif,-apple-system,system-ui,"Segoe UI",sans-serif;
+  margin:0;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+.wrap{max-width:920px;margin:0 auto;padding:36px 22px 90px}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace}
+h1{font-size:24px;margin:0 0 4px;letter-spacing:-.02em}
+.lede{color:var(--ink2);font-size:15px;margin:0 0 6px}
+h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink2);margin:36px 0 12px;display:flex;align-items:center;gap:9px}
+h2::before{content:"";width:3px;height:15px;background:var(--accent);border-radius:2px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:12px 0}
+code,.kbd{font-family:ui-monospace,Menlo,monospace;font-size:.86em;background:var(--panel2);
+  border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:#cdd3e0}
+.kbd{color:var(--accent);white-space:nowrap}
+.tag{font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 9px;border-radius:20px;text-transform:uppercase}
+.tag.solo{background:rgba(99,102,241,.16);color:#a5b4fc;border:1px solid rgba(99,102,241,.4)}
+.tag.roster{background:rgba(245,158,11,.14);color:#fbbf24;border:1px solid rgba(245,158,11,.4)}
+.muted{color:var(--ink3)}.warn{color:var(--warn)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13.5px;margin-top:4px}
+td,th{padding:8px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--ink3);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+tr:last-child td{border-bottom:none}
+ul{margin:8px 0 0;padding-left:18px;color:var(--ink2)}
+li{margin:5px 0}
+.chk{list-style:none;padding-left:0}
+.chk li{display:flex;gap:9px;align-items:flex-start}
+.chk input{margin-top:4px;flex:none;accent-color:var(--accent)}
+.meta{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:13.5px;color:var(--ink2)}
+.meta dt{color:var(--ink3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;align-self:center}
+.meta dd{margin:0}
+.foot{color:var(--ink3);font-size:13px;margin-top:36px;border-top:1px solid var(--line);padding-top:16px}
+a{color:var(--accent)}
+.mermaid{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0;text-align:center;overflow:auto}
+</style></head><body><div class=wrap>
+<h1>Design spec — AI Radar: a Claude API research agent optimized by Harness² inside a Docker sandbox</h1>
+<p class=lede>WHAT &amp; WHY — requirements, acceptance criteria, and the failure modes this change must prove it handles.</p>
+
+<div class=card>
+  <dl class=meta>
+    <dt>Date</dt><dd>2026-10-20</dd>
+    <dt>Status</dt><dd><span class="tag solo">Draft</span></dd>
+    <dt>Summary</dt><dd>Add a Claude API substrate (&#x27;ca&#x27;, Sonnet 5.5 through the Anthropic SDK tool loop) and an &#x27;ai-radar&#x27; benchmark of past, closed time-window research tasks. Harness² can then recursively improve a research agent that tracks new AI models, tools and releases. The whole stack runs in a Docker sandbox behind an egress allowlist. A separate &#x27;harness2-radar&#x27; entry point runs the adopted harness on the current window and writes a cited Markdown digest. Push delivery (Slack or email) happens only when explicitly requested, always from host code, never from the agent. Source of truth: the BenchmarkAdapter and Substrate protocols in harness2/core/spec.py and harness2/substrate/base.py, the LabAdapter as the sibling pattern (criteria stripped in _task_json), and the WorkBuddy Docker and bridge setup as the container precedent.</dd>
+  </dl>
+</div>
+
+<h2>Requirements</h2>
+<div class=card>
+  <ul>
+    <li>R1. New substrate &#x27;ca&#x27; (harness2/substrate/claude_api.py) runs one rollout as an Anthropic SDK tool loop on claude-sonnet-5-5, configured by HARNESS2_CA_MODEL with that default. It satisfies the Substrate protocol: surface, materialise, execute, read_trajectory, preflight.</li>
+    <li>R2. The editable surface for &#x27;ca&#x27; is the familiar c1..c8 shape: systemprompt.md, guardrails.md, LongTermMEMORY.md, tool_descriptions/tool_guidance.md, skills/&lt;name&gt;/SKILL.md and scripts/*.py. The always-on files are composed into the system prompt. The improver can edit the feed-fetcher scripts as harness components.</li>
+    <li>R3. The agent&#x27;s tools: server-side web_search_20260209 and web_fetch_20260209, with max_uses capped per rollout. Client tools: read_file and list_dir, scoped to the workspace; write_file, scoped to output/ only; load_skill; run_script, which runs only the scripts/*.py present at materialise time, as an argument list with a timeout. Nothing else: no bash, no send or deliver tool.</li>
+    <li>R4. The base harness ships stdlib-only fetchers (urllib plus xml.etree): an RSS/Atom fetcher (Substack /feed endpoints, the O&#x27;Reilly Radar, fast.ai, Hugging Face, Databricks and Dataiku blogs), GitHub releases and commits for watched repos (e.g. thinking-machines-lab/tinker-cookbook, karpathy/*), YouTube channel feeds, arXiv cs.AI/cs.CL/cs.LG listings, and Hacker News via the Algolia API. X and LinkedIn are not fetched (login walls and ToS); web_search covers them indirectly.</li>
+    <li>R5. New benchmark &#x27;radar&#x27; (harness2/benchmarks/radar.py) implements BenchmarkAdapter. A task is a closed past window × a topic domain. The six domains come from the watchlist&#x27;s focus areas: governance-and-economics, education-and-skills, open-models-and-tooling, agents-and-workflows, safety-and-interpretability, enterprise-data-and-ai. The deliverable is output/digest.md: dated items, each with a one-line why-it-matters read through the watchlist&#x27;s lens, plus at least one source URL.</li>
+    <li>R6. Gold sets live outside the repo, under HARNESS2_RADAR_GOLD_DIR/&lt;task_id&gt;/gold.json, one list of must-know items per task. scripts/radar_gold.py drafts each list from the watchlist&#x27;s own sources (sources.json) for that window, and the operator prunes it before the list counts. The improver, the selector and the agent never see the gold lists: listed in leak_globs and never read by task_prompt or task_files.</li>
+    <li>R13. The watchlist is user-owned input, not an editable harness component. radar/watchlist.md stores the operator&#x27;s lens, people and organizations verbatim and is injected into every task prompt. radar/sources.json maps each watched entity and topic to verified feed URLs and repos, and is the single machine-readable list that fetchers, gold drafting and the proxy allowlist all read. The improver can change how the agent covers the watchlist (scripts, skills, prompts), never who or what is on it.</li>
+    <li>R7. The judge (adapter.score) uses Claude (HARNESS2_JUDGE_MODEL, default claude-sonnet-5-5) to grade the selected run&#x27;s digest against gold.json and the run&#x27;s own fetched-source cache. It returns recall, precision (claims supported by a cited, fetched source), in-window rate and duplicate count. A judge failure returns None.</li>
+    <li>R8. New proposer channel &#x27;claude_api&#x27; in core/proposer.py, alongside claude_cli and opencode. It drives the same tool loop with workspace-scoped file tools, so the improver also runs on the Claude API inside the container with no Claude Code CLI or Node dependency.</li>
+    <li>R9. The anthropic SDK goes in a new pinned optional extra, [claude]. pyproject &#x27;dependencies = []&#x27; stays empty, and importing harness2 without the extra still works.</li>
+    <li>R10. Docker sandbox under docker/: a Dockerfile (python:3.12-slim, non-root, read-only root fs, writable /work volume for HARNESS2_RUNS_DIR) and compose.yaml with two networks. The harness container sits on an internal-only network. A pinned egress-proxy sidecar allowlists api.anthropic.com, the fetcher hosts, and the delivery hosts only when delivery is enabled. Secrets arrive through env_file and are never baked into the image.</li>
+    <li>R11. Entry point &#x27;harness2-radar&#x27; runs the adopted (or base) harness on the window ending today and writes runs/radar/digests/&lt;date&gt;.md. It delivers only with --deliver slack|email plus the matching env vars (HARNESS2_RADAR_SLACK_WEBHOOK, or HARNESS2_RADAR_SMTP_*), using stdlib urllib or smtplib, and prints what it is about to send before sending.</li>
+    <li>R12. Cost is visible and bounded. Each rollout records cost_usd from response usage × a price table in config, plus web-search request fees. HARNESS2_CA_MAX_TURNS and a per-rollout USD cap stop the loop. --dry-run and harness2-check cover the new cell.</li>
+  </ul>
+</div>
+
+<h2>Acceptance criteria</h2>
+<div class=card>
+  <p class=muted style="margin:0 0 8px">Each is an observable, testable statement. These become the verification checklist.</p>
+  <ul class=chk>
+    <li><input type=checkbox> A1. `harness2 --bench radar --substrate ca --k 1 --dry-run` lists the selected tasks and makes zero network or model calls (asserted by patching the Anthropic client to raise).</li>
+    <li><input type=checkbox> A2. With a fake Anthropic client scripted to call web_search, run_script and write_file, then end_turn, CaSubstrate.execute produces a run_dir in which delivered() is True, trajectory() renders in the shared [ACTION]/[OBSERVATION]/[ERROR] grammar, and RunView.cost_usd equals the scripted usage × price table.</li>
+    <li><input type=checkbox> A3. Running the real recursion with the fake client at k in {1,2} produces (ledger R, ledger P) == (4k, 3k), the same as the demo, under subTest.</li>
+    <li><input type=checkbox> A4. write_file with a path outside output/, run_script with a name not in the materialised scripts/, and read_file with &#x27;..&#x27; or an absolute path each return a tool_result with is_error=true and touch nothing outside the workspace.</li>
+    <li><input type=checkbox> A5. RadarAdapter.task_prompt(task) and the improver workspace contain no gold.json content, and no file matching leak_globs appears in the proposer context directory.</li>
+    <li><input type=checkbox> A6. When the judge client raises or returns unparseable output, score() returns None and harness2-report excludes that task from the denominator rather than counting it as 0.</li>
+    <li><input type=checkbox> A7. `python -c &#x27;import harness2, harness2.cli.run_sweep&#x27;` succeeds in an env without anthropic installed. Selecting --substrate ca there raises ConfigError naming `uv pip install -e &#x27;.[claude]&#x27;`.</li>
+    <li><input type=checkbox> A8. `docker compose -f docker/compose.yaml run harness2 harness2-demo --output /work/demo --k 2` passes in the container. From the container, curl to api.anthropic.com succeeds through the proxy, and curl to a non-allowlisted host (e.g. example.com) fails.</li>
+    <li><input type=checkbox> A9. `harness2-radar` without --deliver makes zero calls to the Slack or SMTP hosts (asserted with a patched urlopen/SMTP). With --deliver slack and no webhook env var, it raises ConfigError before running the agent.</li>
+    <li><input type=checkbox> A10. `uvx ruff check .`, `python -m unittest discover -s tests` and `python scripts/check_provenance.py` all pass. Every new .py/.sh file carries the Apache header, a contract docstring and `from __future__ import annotations`.</li>
+  </ul>
+</div>
+
+<h2>Failure modes to PROVE</h2>
+<div class=card>
+  <p class=muted style="margin:0 0 8px">Each is a realistic way this code breaks plus the assertion that proves it is handled.</p>
+  <ul>
+    <li><b>Gold leakage to improver/selector</b> — No gold.json bytes appear in task_prompt, task_files, the proposer workspace or the selector prompt (grep the staged dirs in a test).</li>
+    <li><b>Judge failure coerced to zero</b> — A judge exception or malformed JSON yields score None, and the report denominator drops that task.</li>
+    <li><b>Selection sees the judge</b> — core/* and the selection path never import radar.score or core/judge (an import-graph assertion, same as the existing failed-selection test).</li>
+    <li><b>Tool sandbox escape</b> — Path traversal, absolute paths, symlinks out of the workspace, and unknown script names are all rejected as is_error tool_results.</li>
+    <li><b>Prompt injection reaching delivery</b> — The agent has no network-send tool. Delivery runs only from harness2-radar host code behind --deliver, and benchmark execute() never calls delivery code (patched-out sender raises if touched).</li>
+    <li><b>Runaway cost / infinite loop</b> — The loop stops at HARNESS2_CA_MAX_TURNS or the USD cap, marks the run ok=False with the error recorded, and the ledger still counts the rollout.</li>
+    <li><b>Server-tool error treated as success</b> — A web_search_tool_result whose content is an error object (e.g. max_uses_exceeded) renders as [ERROR] in the trajectory, not as results.</li>
+    <li><b>Unhandled stop reasons</b> — refusal, max_tokens and pause_turn are each handled: refusal ends the run with error recorded, pause_turn resumes, max_tokens is recorded. None of them crashes or silently counts as delivered.</li>
+    <li><b>Runtime dependency creep</b> — pyproject dependencies == [], and harness2 imports without anthropic installed.</li>
+    <li><b>Secret exposure</b> — The image has no ANTHROPIC_API_KEY or webhook baked in (docker history / inspect contain no secret values). Trajectories and run_dirs never contain env values. The proposer&#x27;s _DROP_ENV behaviour is unchanged for claude_cli.</li>
+    <li><b>Egress allowlist bypass</b> — The harness container has no default route (internal network only). Direct-to-IP and non-allowlisted hosts fail from inside the container.</li>
+    <li><b>Incompatible resume after model change</b> — Changing HARNESS2_CA_MODEL with the same HARNESS2_RUNS_DIR is blocked by the saved-configuration check, as for other substrates.</li>
+    <li><b>Watchlist drift between files</b> — Every entity named in watchlist.md has a sources.json entry (or an explicit &#x27;search-only&#x27; marker), every sources.json host is in the proxy allowlist, and a test fails on any mismatch.</li>
+    <li><b>Fetcher network flakiness</b> — Fetcher scripts time out and exit non-zero with a readable stderr line. run_script returns it as is_error, and the rollout continues.</li>
+  </ul>
+</div>
+
+<h2>Scope &amp;amp; route</h2>
+<div class=card>
+  <table>
+    <tr><th>Route</th><th>When</th><th>This change?</th></tr>
+    <tr><td><span class="tag solo">solo</span></td><td>One coherent change in a single domain</td><td>✓</td></tr>
+    <tr><td><span class="tag roster">roster</span></td><td>Parallel / cross-domain / large work</td><td>—</td></tr>
+  </table>
+  <p style="margin:12px 0 0"><b>Chosen route:</b> SOLO — About 12 files across substrate, benchmark, proposer channel, CLI wiring, Docker and tests, but they form one dependency chain: the loop module feeds the substrate, the substrate feeds the adapter, the adapter feeds the CLI and Docker. Most units depend on the shared tool loop, so parallel dispatch would mostly rebuild context. Work it in four phases, each green before the next: (1) loop + substrate, (2) radar benchmark + judge, (3) proposer channel + CLI + radar entry point, (4) Docker + delivery.</p>
+</div>
+
+<h2>Key decisions &amp;amp; trade-offs</h2>
+<div class=card>
+  <table>
+    <tr><th>Decision</th><th>Why</th><th>Alternative rejected</th></tr>
+    <tr><td>Optimize the research agent with Harness² rather than just running it</td><td>Your choice. It is the framework&#x27;s purpose: prompts, skills and fetchers improve against measured recall and precision instead of hand-tuning.</td><td>Standalone agent with no recursion: ignores the method and leaves quality unmeasured.</td></tr>
+    <tr><td>Benchmark tasks are closed past windows with privately curated gold lists</td><td>Recursion needs a stable target. A past week has a knowable set of must-know releases. Keeping the gold lists out of the repo and out of public datasets removes the answer leakage that troubles JobBench.</td><td>Grading live &#x27;today&#x27; digests: no ground truth, and scores drift with the news cycle. LLM-only grading without gold: rewards fluent but incomplete digests.</td></tr>
+    <tr><td>Anthropic SDK manual tool loop (one shared module) rather than the beta Tool Runner or the Claude Agent SDK</td><td>The loop has to enforce turn and USD caps, per-tool sandbox checks, server-tool error branching, pause_turn resumption and trajectory capture. A manual loop owns all of that explicitly and avoids a beta dependency. The same module serves the executor substrate and the claude_api proposer channel.</td><td>Tool Runner: beta surface, and the caps and capture would be bolted onto hooks. Agent SDK: brings the whole Claude Code toolset (bash, unrestricted fs), which is wider than the sandbox wants.</td></tr>
+    <tr><td>Server-side web_search/web_fetch for discovery, plus improvable stdlib fetcher scripts for structured sources</td><td>Server tools need no container egress and give citations. Fetchers give deterministic coverage of arXiv, GitHub releases, RSS and HN. Because the fetchers live in scripts/ (c7), Harness² can tune them.</td><td>Feeds-only: misses announcements that never hit a feed. Search-only: noisy and non-deterministic, and it misses the long tail of release notes.</td></tr>
+    <tr><td>Local Docker with an internal network and an allowlisting egress-proxy sidecar</td><td>Your choice. Restriction belongs at the network layer (security-guidelines.md). It contains improver-authored scripts, and it matches the WorkBuddy Docker precedent.</td><td>Managed Agents: rollouts leave the host, and it is a new beta surface. Host-level firewall rules: not portable and easy to forget.</td></tr>
+    <tr><td>Sonnet 5.5 (claude-sonnet-5-5) as the default for executor, improver and judge, each overridable by env var</td><td>Your choice of model. $2/$10 per MTok keeps the R=4k + P=3k recursion affordable. A stronger judge (e.g. claude-opus-5-5) is a one-variable change.</td><td>Hard-coding the model ids: blocks the judge upgrade and reproducibility sweeps.</td></tr>
+    <tr><td>Delivery happens in host code behind an explicit --deliver flag, never as an agent tool</td><td>Sending is outward-facing and irreversible. Web content is untrusted, so an injected page must not be able to trigger or redirect a send. Benchmark rollouts never deliver.</td><td>A send_digest tool exposed to the agent: injection risk, and spam from every rollout during recursion.</td></tr>
+    <tr><td>Watchlist-first coverage, through Tim O&#x27;Reilly&#x27;s lens (&#x27;create more value than you capture&#x27;), with six topic domains derived from it</td><td>Your choice: start from the companies, people and topics you care about rather than a generic AI news firehose. The topic domains double as Harness²&#x27;s library grouping unit, and drafting gold from watched sources cuts curation down to pruning a list.</td><td>Generic domains (models, dev tools, research, infra): broad but off-lens, and the gold lists would have to be built from scratch.</td></tr>
+    <tr><td>Reuse install_mode &#x27;workspace_agents_md&#x27; for &#x27;ca&#x27; instead of adding a new mode</td><td>Same semantics (tree staged into the workspace, always-on files composed into the system prompt). This avoids editing INSTALL_MODES in core/spec.py.</td><td>A new &#x27;claude_api&#x27; install mode: a core edit with no behavioral difference.</td></tr>
+  </table>
+</div>
+
+<h2>Diagrams</h2>
+<div class=card>
+  <div class=area>Sandbox topology</div>
+  <pre class="mermaid">flowchart LR
+  subgraph host[Host]
+    env[.env secrets] -.env_file.-&gt; H
+    vol[(runs volume /work)]
+    gold[(gold dir, read-only mount)]
+  end
+  subgraph internal[docker internal network]
+    H[harness2 container\nnon-root, ro rootfs] --&gt; vol
+    gold --&gt; J[judge in H]
+  end
+  H --&gt;|HTTPS_PROXY| P[egress proxy\nallowlist]
+  P --&gt; A[api.anthropic.com\nmessages + web_search/web_fetch]
+  P --&gt; F[arxiv / api.github.com / RSS / hn.algolia]
+  P -.only with --deliver.-&gt; D[hooks.slack.com / SMTP]</pre>
+  <div class=area>One recursion step on the radar benchmark</div>
+  <pre class="mermaid">sequenceDiagram
+  participant S as run_sweep
+  participant X as CaSubstrate (Sonnet)
+  participant Pr as Proposer claude_api
+  participant Sel as Blind selector
+  participant J as Radar judge
+  S-&gt;&gt;X: execute(task window, harness tree)
+  X-&gt;&gt;X: tool loop: web_search, run_script fetchers, write output/digest.md
+  X--&gt;&gt;S: run_dir + trajectory + cost
+  S-&gt;&gt;Pr: trajectories (no gold) -&gt; propose tree edit
+  Pr--&gt;&gt;S: edited c1..c8 tree
+  S-&gt;&gt;X: re-execute with candidate harness
+  S-&gt;&gt;Sel: pick terminal run (no scores)
+  Sel--&gt;&gt;S: chosen run
+  S-&gt;&gt;J: score(chosen) vs gold.json + fetched cache
+  J--&gt;&gt;S: recall/precision or None</pre>
+  <div class=area>Daily digest run</div>
+  <pre class="mermaid">flowchart LR
+  C[cron / manual] --&gt; R[harness2-radar]
+  R --&gt; X[CaSubstrate, adopted harness]
+  X --&gt; M[runs/radar/digests/DATE.md]
+  M --&gt; Q{--deliver?}
+  Q -- no --&gt; E[done]
+  Q -- slack/email --&gt; V[print preview] --&gt; D[host sender]</pre>
+</div>
+
+<script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";mermaid.initialize({startOnLoad:true,theme:"dark"});</script>
+
+<p class=foot>Generated by <span class=kbd>/intech-agex:drive</span> (spec-first, Tier 2) from the spec JSON. The Acceptance criteria + Failure-modes-to-PROVE list together are the verification checklist.</p>
+</div></body></html>

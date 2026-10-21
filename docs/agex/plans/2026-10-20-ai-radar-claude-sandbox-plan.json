@@ -1,0 +1,101 @@
+{
+  "kind": "plan",
+  "feature": "AI Radar: a Claude API research agent optimized by Harness² inside a Docker sandbox",
+  "date": "2026-10-20",
+  "design_spec": "../specs/2026-10-20-ai-radar-claude-sandbox-design.html",
+  "files": [
+    { "path": "pyproject.toml", "responsibility": "Add the pinned [claude] extra (anthropic 1.x); add harness2-radar to [project.scripts]; dependencies stays []", "state": "modified" },
+    { "path": "harness2/config.py", "responsibility": "CA_MODEL, CA_MAX_TURNS, CA_MAX_USD, RADAR_GOLD_DIR, CLAUDE_PRICES table (dated comment), require_anthropic() raising ConfigError with the install command", "state": "modified" },
+    { "path": "harness2/claude_loop.py", "responsibility": "The single Claude API tool loop: workspace-scoped client tools, server-tool passthrough, stop-reason handling, turn/USD caps, JSONL capture. Lazy-imports anthropic", "state": "new" },
+    { "path": "harness2/substrate/claude_api.py", "responsibility": "CaSubstrate: CA_SURFACE, materialise (workspace_agents_md), execute through claude_loop, read_trajectory from JSONL into the shared grammar, preflight", "state": "new" },
+    { "path": "harness2/core/spec.py", "responsibility": "Add 'claude_api' to CHANNELS; enforce a bare Anthropic id, as for claude_cli", "state": "modified" },
+    { "path": "harness2/core/proposer.py", "responsibility": "_claude_api channel method that calls claude_loop with file tools scoped to the proposer cwd; returns (text, cost, err) like its siblings", "state": "modified" },
+    { "path": "harness2/benchmarks/radar.py", "responsibility": "RadarAdapter + radar_spec + base harness tree (prompts, fetcher scripts, a skill) + task table + gold-aware score()", "state": "new" },
+    { "path": "harness2/benchmarks/radar_tasks.json", "responsibility": "Task table: id, window_start, window_end, domain (one of the six watchlist topics), focus notes. Contains no answers", "state": "new" },
+    { "path": "assets/radar/watchlist.md", "responsibility": "Operator's watchlist verbatim (lens, people, organizations); injected into every task prompt; never in the editable tree", "state": "new" },
+    { "path": "assets/radar/sources.json", "responsibility": "Entity/topic → verified feed URLs, repos and channel ids, with 'search-only' markers for X/LinkedIn-only voices; read by fetchers, gold drafting and allowlist generation", "state": "new" },
+    { "path": "MANIFEST.in", "responsibility": "Ship assets/radar/*.md and *.json in the sdist", "state": "modified" },
+    { "path": "harness2/cli/_common.py", "responsibility": "Add 'radar' to BENCHES and 'ca' to SUBSTRATES; adapter factory wiring", "state": "modified" },
+    { "path": "harness2/cli/radar.py", "responsibility": "harness2-radar: run the adopted/base harness on the current window, write the dated digest, opt-in --deliver slack|email with a printed preview", "state": "new" },
+    { "path": "harness2/preflight.py", "responsibility": "harness2-check probes for the ca/radar cell: extra installed, API key name present (never the value), gold dir readable, proxy reachable", "state": "modified" },
+    { "path": "scripts/radar_gold.py", "responsibility": "Operator helper: draft candidate gold items for a closed window from the fetchers, for human curation into HARNESS2_RADAR_GOLD_DIR. Writes no gold itself without --write", "state": "new" },
+    { "path": "docker/Dockerfile", "responsibility": "python:3.12-slim, uv, non-root user, pip install -e '.[claude]', no secrets, ENTRYPOINT harness2", "state": "new" },
+    { "path": "docker/compose.yaml", "responsibility": "harness2 service on an internal network + egress proxy sidecar (digest-pinned image); /work and gold mounts; env_file ../.env; read_only rootfs + tmpfs", "state": "new" },
+    { "path": "docker/proxy/allowlist.txt", "responsibility": "Egress allowlist: api.anthropic.com, export.arxiv.org, api.github.com, hn.algolia.com, configured RSS hosts; delivery hosts in a separate opt-in file", "state": "new" },
+    { "path": "tests/test_claude_api.py", "responsibility": "Fake-client tests: loop, tool sandbox, stop reasons, cost, trajectory, budget R/P, radar leakage, judge None, delivery gating, import-without-extra", "state": "new" },
+    { "path": "docs/RADAR.md", "responsibility": "Operator guide: setup, gold curation, dry-run → one-task → sweep escalation, daily digests, delivery, cost math", "state": "new" },
+    { "path": "docs/SETUP.md", "responsibility": "Document env var names only: HARNESS2_CA_MODEL, HARNESS2_RADAR_GOLD_DIR, HARNESS2_RADAR_SLACK_WEBHOOK, HARNESS2_RADAR_SMTP_*", "state": "modified" }
+  ],
+  "tasks": [
+    { "area": "Phase 0: verify before building", "steps": [
+      "Confirm the current anthropic 1.x version on PyPI and pin it exactly in [claude]",
+      "Fetch live docs for web_search_20260209 / web_fetch_20260209 pricing and the tool-result shapes; record the price table date in config.CLAUDE_PRICES",
+      "Check core/schedule.ns() and the saved-config check so 'ca' and the model id participate in the namespace and resume guard",
+      "Resolve and verify a feed URL for every watchlist entity (Substack /feed, blog RSS, GitHub repos, YouTube channel ids); mark X/LinkedIn-only voices search-only"
+    ] },
+    { "area": "Phase 1: claude_loop + CaSubstrate", "steps": [
+      "Write failing tests: a fake client scripted with tool_use → end_turn produces a JSONL capture; path traversal / absolute path / unknown script return is_error",
+      "Implement claude_loop.run(workspace, system, task, tools_cfg, caps) with lazy `import anthropic` via config.require_anthropic()",
+      "Write failing tests for stop reasons: refusal (error recorded, not delivered), pause_turn (resumed), max_tokens (recorded), server-tool error object → [ERROR]",
+      "Implement stop-reason handling and the turn + USD caps; cost = usage × CLAUDE_PRICES + search request fees",
+      "Implement CaSubstrate (CA_SURFACE mirroring the opencode always-on set, materialise via workspace_agents_md, read_trajectory into [ACTION]/[OBSERVATION]/[ERROR])",
+      "Run python -m unittest tests.test_claude_api; uvx ruff check .",
+      "Commit: feat(substrate): add Claude API substrate and tool loop"
+    ] },
+    { "area": "Phase 2: radar benchmark + judge", "steps": [
+      "Write failing test: task_prompt and the proposer workspace contain no gold bytes, and leak_globs covers gold.json",
+      "Write assets/radar/watchlist.md (operator's list verbatim) and assets/radar/sources.json (feeds verified in Phase 0); failing test first for watchlist↔sources↔allowlist consistency",
+      "Write radar_tasks.json with 18 seed tasks (3 closed weeks × 6 watchlist topics); add a train/test partition via scripts/split_tasks.py",
+      "Build the base harness tree: systemprompt.md, guardrails.md, tool_guidance.md, skills/triage-release/SKILL.md, scripts/{arxiv,gh_releases,rss,hn}.py (stdlib, timeouts, non-zero exit on failure)",
+      "Write BenchPrompts wording in terms of the work (tracking AI releases for a CTO), avoiding the validator's banned words (benchmark, evaluation, grader, rubric, score)",
+      "Write failing test: judge raises / returns malformed JSON → score() is None; report denominator excludes it",
+      "Implement RadarAdapter (tasks, domain_of, task_prompt, execute, delivered = output/digest.md non-empty with ≥1 URL, deliverable_text, validate_tree, score)",
+      "Run the full suite + an import-graph assertion that core/ never imports benchmarks.radar.score",
+      "Commit: feat(benchmarks): add ai-radar benchmark"
+    ] },
+    { "area": "Phase 3: proposer channel + CLI wiring", "steps": [
+      "Write failing test: resolve_channel_model('claude_api', 'claude-sonnet-5-5') is valid; a provider-prefixed id raises",
+      "Add 'claude_api' to CHANNELS and implement Proposer._claude_api over claude_loop (file tools scoped to cwd; claude_cli's _DROP_ENV untouched)",
+      "Wire 'radar'/'ca' into cli/_common.py; extend preflight for the cell",
+      "Write failing test: recursion with the fake client at k in {1,2} gives (R, P) == (4k, 3k) via subTest",
+      "Write failing test: --dry-run with the client patched to raise makes no calls",
+      "Commit: feat(cli): wire radar benchmark and claude_api channel"
+    ] },
+    { "area": "Phase 4: daily digest, delivery, Docker", "steps": [
+      "Write failing tests: harness2-radar without --deliver never touches urlopen/SMTP; --deliver slack without the webhook env var raises ConfigError before the agent runs",
+      "Implement cli/radar.py (current window, adopted-harness lookup with fallback to base, dated digest, preview print, stdlib senders)",
+      "Write the Dockerfile and compose.yaml (internal network, proxy sidecar, read-only rootfs, tmpfs /tmp, /work volume, gold mounted read-only)",
+      "Verify in the container: harness2-demo passes; curl api.anthropic.com via the proxy succeeds; curl example.com fails; docker inspect/history shows no secret values",
+      "Write docs/RADAR.md and the SETUP.md env var names",
+      "Commit: feat(radar): daily digest entry point and Docker sandbox"
+    ] },
+    { "area": "Phase 5: first paid slice (needs explicit spend confirmation)", "steps": [
+      "Draft gold for the 3 seed weeks from watchlist sources with scripts/radar_gold.py; operator prunes",
+      "harness2-check --bench radar --substrate ca",
+      "harness2 --bench radar --substrate ca --k 1 --max-tasks 1 --only-domains research (≈ 4 rollouts + 3 improver stages); then harness2-judge / harness2-report with identical flags",
+      "Record measured cost per task to size a full sweep before proposing one"
+    ] }
+  ],
+  "test_strategy": [
+    { "item": "Gold leakage", "proven_by": "Grep the staged task_prompt, task_files and proposer workspace for gold.json bytes; assert leak_globs covers it" },
+    { "item": "Judge failure ≠ 0", "proven_by": "Patched judge raises / returns junk → score None; report row excluded from the denominator" },
+    { "item": "Selection blind to judge", "proven_by": "Import-graph assertion over core/ and the selection path" },
+    { "item": "Tool sandbox", "proven_by": "Parametrised subTests: '..', absolute, symlink-out, write outside output/, unknown script → is_error, filesystem unchanged" },
+    { "item": "No agent-driven delivery", "proven_by": "Sender patched to raise during execute() and harness2-radar without --deliver" },
+    { "item": "Caps / runaway cost", "proven_by": "Fake client that never ends → stops at MAX_TURNS / USD cap, ok=False, error recorded, ledger counts it" },
+    { "item": "Stop reasons + server-tool errors", "proven_by": "Scripted refusal / pause_turn / max_tokens / max_uses_exceeded responses → expected run state and [ERROR] lines" },
+    { "item": "Budget contract", "proven_by": "Real recursion with fake client, (R, P) == (4k, 3k) for k in {1,2}" },
+    { "item": "No runtime deps", "proven_by": "Subprocess test in a venv without anthropic: import harness2 succeeds; --substrate ca raises ConfigError with the install command" },
+    { "item": "Egress + secrets", "proven_by": "Manual container checks in Phase 4 (curl allowed vs blocked host; docker inspect/history), recorded in the PR test plan" },
+    { "item": "Never a live model in tests", "proven_by": "All tests use a fake client object; anthropic.Anthropic patched to raise at module level in test setUp" }
+  ],
+  "risks": [
+    { "risk": "Gold curation is manual and is the real bottleneck; thin gold rewards precision over recall", "mitigation": "Start with 18 tasks; radar_gold.py drafts candidates from watchlist sources; track gold size per task in the report" },
+    { "risk": "Live web drift makes rollouts non-reproducible across days", "mitigation": "Closed past windows; the run_dir caches fetched sources and the judge grades against that cache; record the run date with results" },
+    { "risk": "Prompt injection from fetched pages steers the agent", "mitigation": "Narrow tool surface (no bash, no send, writes only to output/); container egress allowlist; delivery from host code only" },
+    { "risk": "Price table goes stale, so reported cost is wrong", "mitigation": "Dated CLAUDE_PRICES constant; Phase 0 verification; cost is labelled an estimate in report output" },
+    { "risk": "Improver-edited fetcher scripts attempt off-allowlist egress or heavy work", "mitigation": "Proxy allowlist + run_script timeout; validate_tree rejects non-stdlib imports in scripts/" },
+    { "risk": "Touching core/proposer.py and core/spec.py widens the review surface on a research codebase", "mitigation": "The changes are additive (new channel value + method); existing five regressions must stay green; channel tests added" }
+  ],
+  "rollback": "Each phase is its own commit on a feature branch (feat/ai-radar). Revert the phase commits in reverse order; nothing outside the new files changes behavior for existing benchmarks or substrates, and dependencies stays []."
+}
