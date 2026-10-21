@@ -90,8 +90,29 @@ class RadarCliTests(unittest.TestCase):
         self.assertEqual(sent.call_count, 1)
         req = sent.call_args.args[0]
         self.assertEqual(req.full_url, "https://hooks.slack.com/x")
-        self.assertIn("frontier-applications", json.loads(req.data)["text"])
+        payload = json.loads(req.data)
+        self.assertEqual(payload["text"], "AI Radar 2026-10-18")
+        self.assertEqual([b["type"] for b in payload["blocks"]], ["markdown"])
+        self.assertIn("## frontier-applications", payload["blocks"][0]["text"])
         self.assertIn("about to send", out)
+
+    def test_long_digest_splits_into_capped_slack_messages_at_topic_headings(self):
+        sections = [f"## topic-{i}\n" + "- item https://x\n" * 400 for i in range(5)]
+        text = "# AI Radar\n\n" + "\n".join(sections) + "\n" + "y" * 30_000
+        chunks = cli._slack_chunks(text)
+        self.assertTrue(all(len(c) <= cli._SLACK_LIMIT for c in chunks))
+        self.assertEqual("".join(chunks).replace("\n", ""), text.replace("\n", ""))
+        starts = [c.split("\n", 1)[0] for c in chunks]
+        for i in range(1, 4):  # sections that fit are never split mid-section
+            self.assertIn(f"## topic-{i}", starts)
+        env = dict(NO_DELIVERY_ENV, HARNESS2_RADAR_SLACK_WEBHOOK="https://hooks.slack.com/x")
+        sent = MagicMock()
+        sent.return_value.__enter__.return_value.status = 200
+        with patch.dict(os.environ, env, clear=True), patch("urllib.request.urlopen", sent):
+            cli._send_slack(text, "AI Radar d")
+        notes = [json.loads(c.args[0].data)["text"] for c in sent.call_args_list]
+        self.assertEqual(notes, [f"AI Radar d ({i}/{len(chunks)})" for i in
+                                 range(1, len(chunks) + 1)])
 
     def test_send_existing_digest_by_email_without_running_the_agent(self):
         digest = self.out / "d.md"

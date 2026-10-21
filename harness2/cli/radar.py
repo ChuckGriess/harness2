@@ -44,7 +44,7 @@ from .. import config
 from ..benchmarks import radar
 from ..substrate.claude_api import CaSubstrate
 
-_SLACK_LIMIT = 39_000
+_SLACK_LIMIT = 12_000  # cumulative markdown-block cap per Slack message
 _EMAIL_VARS = ("HARNESS2_RADAR_SMTP_HOST", "HARNESS2_RADAR_SMTP_USER",
                "HARNESS2_RADAR_SMTP_PASSWORD", "HARNESS2_RADAR_EMAIL_FROM",
                "HARNESS2_RADAR_EMAIL_TO")
@@ -64,16 +64,46 @@ def _require_delivery(kind: str) -> None:
             config.require(name, needed_by="email delivery")
 
 
-def _send_slack(text: str) -> None:
+def _slack_chunks(text: str, limit: int = _SLACK_LIMIT) -> list[str]:
+    """Split at topic headings, then lines, so each message stays under Slack's markdown cap."""
+    sections, cur = [], []
+    for ln in text.splitlines():
+        if ln.startswith("## ") and cur:
+            sections.append("\n".join(cur))
+            cur = []
+        cur.append(ln)
+    sections.append("\n".join(cur))
+    pieces = []
+    for sec in sections:
+        if len(sec) <= limit:
+            pieces.append(sec)
+            continue
+        for ln in sec.splitlines():
+            pieces.extend(ln[i:i + limit] for i in range(0, max(len(ln), 1), limit))
+    chunks = [""]
+    for piece in pieces:
+        joined = f"{chunks[-1]}\n{piece}" if chunks[-1] else piece
+        if len(joined) <= limit:
+            chunks[-1] = joined
+        else:
+            chunks.append(piece)
+    return [c for c in chunks if c.strip()]
+
+
+def _send_slack(text: str, subject: str) -> None:
+    """Post as Slack markdown blocks, one message per chunk; `text` is the notification line."""
     url = config.require("HARNESS2_RADAR_SLACK_WEBHOOK", needed_by="Slack delivery")
-    body = text if len(text) <= _SLACK_LIMIT else text[:_SLACK_LIMIT] + "\n…(truncated)"
-    req = urllib.request.Request(
-        url, data=json.dumps({"text": body}).encode(), method="POST",
-        headers={"Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(req, timeout=30) as r:
-        if r.status != 200:
-            raise RuntimeError(f"Slack webhook answered HTTP {r.status}")
+    chunks = _slack_chunks(text)
+    for i, chunk in enumerate(chunks, 1):
+        note = subject if len(chunks) == 1 else f"{subject} ({i}/{len(chunks)})"
+        payload = {"text": note, "blocks": [{"type": "markdown", "text": chunk}]}
+        req = urllib.request.Request(
+            url, data=json.dumps(payload).encode(), method="POST",
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=30) as r:
+            if r.status != 200:
+                raise RuntimeError(f"Slack webhook answered HTTP {r.status} on message {i}")
 
 
 def _send_email(text: str, subject: str) -> None:
@@ -91,7 +121,7 @@ def _send_email(text: str, subject: str) -> None:
 def deliver(kind: str, text: str, subject: str) -> None:
     """Print what is about to go out, then send it. The caller already asked for this."""
     print(f"about to send {len(text)} chars via {kind}: {subject}\n---\n{text[:1500]}\n---")
-    _send_slack(text) if kind == "slack" else _send_email(text, subject)
+    _send_slack(text, subject) if kind == "slack" else _send_email(text, subject)
     print(f"sent via {kind}")
 
 
