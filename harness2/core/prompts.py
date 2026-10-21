@@ -604,6 +604,94 @@ and you cite it in your notes. If you cannot name the moment, the edit is specul
 context for nothing."""
 
 
+_SURFACE_CA = """\
+# WHAT YOU CAN CHANGE
+
+The harness is a tree of components. Each has a different runtime cost and a different reach:
+
+| path | what it is | when it is in context |
+|---|---|---|
+| `systemprompt.md` | role and procedure | ALWAYS ON -- resent on every turn of the tool loop |
+| `guardrails.md` | standing rules | ALWAYS ON -- same cost |
+| `LongTermMEMORY.md` | durable domain facts | ALWAYS ON -- same cost |
+| `tool_descriptions/tool_guidance.md` | how to use the tools | ALWAYS ON -- same cost |
+| `skills/<name>/SKILL.md` | a reusable workflow | loaded ON DEMAND via the `load_skill` tool |
+| `scripts/<name>.py` | a deterministic helper | run ON DEMAND via the `run_script` tool |
+
+There are no subagents and no plugins on this surface: a `sub_agents/` or `plugin/` file is
+rejected at validation.
+
+`skills/` -- frontmatter needs `name:` matching the directory and a `description:`. The agent
+sees only the name and description until it calls `load_skill`.
+
+`scripts/` -- run with the standard library only (the sandbox has no third-party packages) and
+from the top level of `scripts/` only: `run_script` cannot reach a script inside a skill
+directory. A script may import a sibling module in `scripts/`. It runs with a timeout and
+without credentials; print results to stdout and exit non-zero only on real failure.
+
+Change only what a trajectory shows needs changing -- but WHERE you change something, the FORM
+matters as much as the content, and the cheap form is not the obvious one.
+
+ALWAYS-ON PROSE IS THE EXPENSIVE OPTION. Every word of it is resent on every turn, competing
+with the agent's own budget -- and the most costly failure on this work is a run that spends its
+budget and produces nothing. An on-demand component costs nothing until it is invoked.
+
+So prefer, in this order:
+  - a SKILL for anything with a recognisable trigger. This is the default form for new
+    instruction.
+  - a SCRIPT for a deterministic operation the runs hand-rolled and got wrong, or did slowly --
+    including a check the agent runs on its own deliverable before finishing.
+  - ALWAYS-ON TEXT last, and only for a short rule that genuinely applies to every run. If you
+    add always-on text, cut something else to pay for it.
+
+TWO RULES THAT DISCARD THE WHOLE PROPOSAL. Validation runs before any rollout, and a harness
+that fails it is thrown away entire.
+
+1. EVERY SKILL NEEDS A TRIGGER LINE. If you create or keep `skills/<name>/SKILL.md`, its
+   directory name must appear VERBATIM in `systemprompt.md` or `guardrails.md`, in the SAME
+   edit:
+
+       When <the situation this skill handles>, call `load_skill` with `<name>`.
+
+2. EVERY SCRIPT YOU NAME MUST EXIST in `scripts/` in the same proposal, and import only the
+   standard library or a sibling in `scripts/`.
+
+THE DELIVERABLE'S SHAPE BELONGS TO THE REQUEST, NOT TO YOU. A harness changes HOW the agent
+works; it must never change WHAT SHAPE it delivers. Where the task names sections, fields or an
+order, that shape is part of what was asked for. Guidance that makes the agent's reasoning
+visible belongs in the harness text or the trajectory, never in the artifact.
+
+# HOW TO MAKE A CHANGE
+
+The harness is in `context/harness/`, and it is YOURS TO EDIT with `read_file`, `write_file`
+and `delete_file`. Your edits on disk ARE the proposal -- there is no separate format to
+reproduce them in, and nothing you write in this reply changes the harness.
+
+- Files you do not touch are inherited unchanged. Do not rewrite a file to keep it the same.
+- Delete a file to remove that component.
+- If the evidence does not argue for any change, leave everything as it is and say KEEP_BASE
+  in your notes. That is a real answer, not a failure.
+
+Then reply with ONE `<notes>` block and nothing else: for each change, the moment in a
+trajectory that motivated it. The notes are read by a person, not applied by a machine."""
+
+
+_TTS_SURFACE_HEAD_CA = """\
+# EDITABLE HARNESS SURFACE
+
+You may write ONLY these paths. Anything else is off the editable surface: it is dropped before
+your work is used, however good it is.
+
+| path | component | when it is in context |
+|---|---|---|
+| `systemprompt.md` | c1 persona/procedure | ALWAYS ON -- resent every turn |
+| `guardrails.md` | c6 always-on rules | ALWAYS ON -- same cost |
+| `LongTermMEMORY.md` | c3 durable domain facts | ALWAYS ON -- same cost |
+| `tool_descriptions/tool_guidance.md` | c4 tool prose | ALWAYS ON -- same cost |
+| `skills/<name>/SKILL.md` | c6 reusable workflow | loaded ON DEMAND via the `load_skill` tool |
+| `scripts/<name>.py` | c7 deterministic helper | run ON DEMAND via the `run_script` tool |"""
+
+
 @dataclass(frozen=True)
 class _SurfaceText:
     """The per-substrate prompt fragments, resolved once at module load."""
@@ -627,6 +715,13 @@ def _build_surface_texts() -> dict[str, _SurfaceText]:
             _TTS_SURFACE_HEAD_CODEX,
             _surface_part(_SURFACE_CODEX, "A skill only exists", "THE DELIVERABLE'S SHAPE"),
             _surface_part(_SURFACE_CODEX, "# HOW TO MAKE A CHANGE"),
+        ]
+    )
+    ca_tts = "\n\n".join(
+        [
+            _TTS_SURFACE_HEAD_CA,
+            _surface_part(_SURFACE_CA, "TWO RULES THAT DISCARD", "THE DELIVERABLE'S SHAPE"),
+            _surface_part(_SURFACE_CA, "# HOW TO MAKE A CHANGE"),
         ]
     )
     return {
@@ -657,6 +752,20 @@ def _build_surface_texts() -> dict[str, _SurfaceText]:
                 "that trigger line in the same edit.",
             ),
             tts_surface=cx_tts,
+        ),
+        "ca": _SurfaceText(
+            surface_md=_SURFACE_CA,
+            inv=_INV_TEMPLATE.replace(
+                "__LOOP_LEVER__",
+                "check script in `scripts/` that the always-on text makes a required step -- "
+                "for example, validating a {deliverable} before finishing",
+            ),
+            dom=_DOM_TEMPLATE.replace(
+                "__TRIGGER_SENTENCE__",
+                "A skill exists only once its name appears in the always-on text: write that "
+                "trigger line in the same edit.",
+            ),
+            tts_surface=ca_tts,
         ),
     }
 

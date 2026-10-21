@@ -15,7 +15,10 @@
 """Improver sessions with file access in an isolated context workspace.
 
 OpenCode reads output/answer.md or the final message; the Claude CLI reads the
-final message. Prompts use stdin, and empty replies raise an error.
+final message. Prompts use stdin, and empty replies raise an error. The Claude API
+channel runs harness2/claude_loop in-process: it reads anywhere in the session
+directory, writes only under context/harness, and a session stopped by a cap is an
+error, never a reply.
 """
 
 from __future__ import annotations
@@ -33,6 +36,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .. import claude_loop as CL
 from .. import config
 from .spec import ChannelSpec
 
@@ -96,6 +100,7 @@ class Proposer:
     attempts: int = 2
     project: str = field(default_factory=lambda: config.VERTEX_PROJECT)
     region: str = field(default_factory=lambda: config.VERTEX_REGION)
+    client: object | None = None
     _calls: list[Reply] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -159,9 +164,10 @@ class Proposer:
                 if context_dir and Path(context_dir).is_dir():
                     shutil.copytree(context_dir, tmp / "context", dirs_exist_ok=True)
                 with _SEM if _SEM is not None else contextlib.nullcontext():
-                    text, cost, err = (
-                        self._claude_cli if self.spec.kind == "claude_cli" else self._opencode
-                    )(tmp, mission, system, wall)
+                    channel = {"claude_cli": self._claude_cli, "claude_api": self._claude_api}
+                    text, cost, err = channel.get(self.spec.kind, self._opencode)(
+                        tmp, mission, system, wall
+                    )
                 spent_usd += cost
                 if not text.strip():
                     last = err or "empty reply"
@@ -249,6 +255,29 @@ class Proposer:
         elif p.returncode != 0 and not text.strip():
             err = f"rc={p.returncode}: {(p.stderr or '')[-300:]}"
         return text, float(payload.get("total_cost_usd") or 0.0), err
+
+    def _claude_api(
+        self, cwd: Path, mission: str, system: str, wall: int
+    ) -> tuple[str, float, str]:
+        (cwd / "context" / "harness").mkdir(parents=True, exist_ok=True)
+        lead = (
+            "Your evidence is under context/. Read it with read_file and list_dir. Edit the "
+            "harness by writing files under context/harness/ with write_file; nothing else is "
+            "writable. Your final message is your reply."
+        )
+        res = CL.run(
+            self.client or config.require_anthropic().Anthropic(),
+            model=self.spec.model,
+            system=f"{lead}\n\n{system}" if system else lead,
+            prompt=mission,
+            box=CL.ToolBox(cwd, writable="context/harness"),
+            caps=CL.Caps(self.spec.steps, config.CA_IMPROVER_MAX_USD_CENTS / 100, float(wall)),
+            capture=cwd / "session.jsonl",
+            effort=self.spec.effort,
+        )
+        if res.error:
+            return "", res.cost_usd, res.error
+        return res.text, res.cost_usd, ""
 
     def _opencode(self, cwd: Path, mission: str, system: str, wall: int) -> tuple[str, float, str]:
         (cwd / "MISSION.md").write_text(

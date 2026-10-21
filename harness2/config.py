@@ -167,6 +167,8 @@ CA_EFFORT = env("HARNESS2_CA_EFFORT", "medium")
 CA_MAX_TURNS = env_int("HARNESS2_CA_MAX_TURNS", 60)
 CA_MAX_USD_CENTS = env_int("HARNESS2_CA_MAX_USD_CENTS", 300)
 CA_MAX_SEARCHES = env_int("HARNESS2_CA_MAX_SEARCHES", 20)
+CA_IMPROVER_MODEL = env("HARNESS2_CA_IMPROVER_MODEL", CA_MODEL)
+CA_IMPROVER_MAX_USD_CENTS = env_int("HARNESS2_CA_IMPROVER_MAX_USD_CENTS", 500)
 CA_SCRIPT_TIMEOUT = 120
 # USD per MTok as (input, output, 5m cache write, cache read), from
 # platform.claude.com/docs/en/about-claude/pricing as checked 2026-10-21. Reported costs are
@@ -202,7 +204,11 @@ WB_MAX_TRIALS = {"oc": 2, "cx": 2}
 WB_MODEL_CONNECTION = "local_proxy"
 
 DEFAULT_PROPOSER_CHANNEL = "opencode"
-PROPOSER_MODEL_BY_CHANNEL = {"opencode": IMPROVER_MODEL, "claude_cli": IMPROVER_MODEL}
+PROPOSER_MODEL_BY_CHANNEL = {
+    "opencode": IMPROVER_MODEL,
+    "claude_cli": IMPROVER_MODEL,
+    "claude_api": CA_IMPROVER_MODEL,
+}
 PHASE_WIDTH = 2
 TRANSPORT_ATTEMPTS = 2
 PROPOSER_CONCURRENCY = 2

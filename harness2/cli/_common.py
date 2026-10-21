@@ -23,13 +23,14 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from .. import config
 from ..core import library as LIB
 from ..core import schedule as SCHED
 from ..core.spec import BenchmarkAdapter
 
-BENCHES = ("jb", "wb", "lab")
+BENCHES = ("jb", "wb", "lab", "radar")
 WB_SUBSETS = ("office", "web", "code")
-SUBSTRATES = ("oc", "cx")
+SUBSTRATES = ("oc", "cx", "ca")
 
 MODES_DEFAULT = "parallel"
 MODES_HELP = (
@@ -58,6 +59,12 @@ def make_adapter(
         return WbAdapter(subset, substrate=substrate, split_file=split_file)
     if subset:
         raise ValueError(f"--subset applies to --bench wb only, got {subset!r} for {bench}")
+    if bench == "radar":
+        from ..benchmarks.radar import RadarAdapter
+
+        return RadarAdapter(substrate=substrate, split_file=split_file)
+    if substrate == "ca":
+        raise ValueError(f"substrate 'ca' runs the radar benchmark only, not {bench!r}")
     if bench == "jb":
         from ..benchmarks.jobbench import JobBenchAdapter
 
@@ -65,6 +72,19 @@ def make_adapter(
     from ..benchmarks.lab import LabAdapter
 
     return LabAdapter(substrate=substrate, split_file=split_file)
+
+
+def judge_model_for(adapter: BenchmarkAdapter) -> str:
+    """The judge model a cell grades with and records in its run identity."""
+    return config.RADAR_JUDGE_MODEL if adapter.spec.name == "radar" else config.JUDGE_MODEL
+
+
+def validate_models_for(adapter: BenchmarkAdapter, *, judge: bool = False) -> None:
+    """Model settings check for this cell; the ca substrate needs the SDK and a credential."""
+    if adapter.substrate.name == "ca":
+        adapter.substrate.preflight()
+        return
+    config.validate_models(judge=judge)
 
 
 def runs_root_for(adapter: BenchmarkAdapter) -> Path:
@@ -96,7 +116,7 @@ def summary_namespace(adapter: BenchmarkAdapter, k: int, *, seed: int | None, ta
 
 def add_cell_args(p: argparse._ActionsContainer) -> None:
     """The (benchmark, substrate) cell selectors; `p` may be a parser or an argument group."""
-    p.add_argument("--bench", required=True, choices=BENCHES, help="jb | wb | lab")
+    p.add_argument("--bench", required=True, choices=BENCHES, help="jb | wb | lab | radar")
     p.add_argument(
         "--subset", default=None, choices=WB_SUBSETS, help="WB only: office | web | code"
     )
@@ -104,7 +124,7 @@ def add_cell_args(p: argparse._ActionsContainer) -> None:
         "--substrate",
         default="oc",
         choices=SUBSTRATES,
-        help="task-executor substrate: oc (opencode) | cx (codex)",
+        help="task-executor substrate: oc (opencode) | cx (codex) | ca (Claude API, radar)",
     )
 
 

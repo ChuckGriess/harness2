@@ -15,7 +15,7 @@
 """One Claude API tool loop, shared by the `ca` substrate and the `claude_api` improver channel.
 
 The model reaches the filesystem only through `ToolBox`, which confines every path to one
-workspace, writes only under its `writable` prefix, and runs only the scripts it was built
+workspace, writes and deletes only under its `writable` prefix, and runs only the scripts it was built
 with, under an environment that carries no credentials. The loop never raises on a model or
 transport failure: it stops, records why in `LoopResult.error`, and leaves the capture on disk.
 Turn, wall-clock and USD caps each stop it. Cost is an estimate from `config.CLAUDE_PRICES`.
@@ -72,6 +72,10 @@ TOOL_SPECS = {
         "Create or overwrite a text file. Only paths under the writable directory are accepted.",
         _schema({"path": _PATH, "content": {"type": "string"}}, ["path", "content"]),
     ),
+    "delete_file": (
+        "Delete a file. Only paths under the writable directory are accepted.",
+        _schema({"path": _PATH}, ["path"]),
+    ),
     "load_skill": (
         "Load the full instructions of a named skill.",
         _schema({"name": {"type": "string"}}, ["name"]),
@@ -102,7 +106,7 @@ class ToolBox:
     def names(self) -> list[str]:
         out = ["read_file", "list_dir"]
         if self.writable:
-            out.append("write_file")
+            out += ["write_file", "delete_file"]
         if (Path(self.workspace) / self.skills_dir).is_dir():
             out.append("load_skill")
         if self.scripts:
@@ -152,19 +156,27 @@ class ToolBox:
             raise ToolError(f"no such directory: {args.get('path')!r}")
         return "\n".join(c.name + ("/" if c.is_dir() else "") for c in sorted(p.iterdir()))
 
+    def _writable(self, tool: str, rel) -> Path:
+        p = self._resolve(rel)
+        if (self._root() / self.writable).resolve() not in p.parents:
+            raise ToolError(f"{tool} only works under {self.writable}/; got {rel!r}")
+        return p
+
     def _write_file(self, args: dict) -> str:
-        p = self._resolve(args.get("path"))
-        allowed = (self._root() / self.writable).resolve()
-        if allowed not in p.parents:
-            raise ToolError(
-                f"write_file only writes under {self.writable}/; got {args.get('path')!r}"
-            )
+        p = self._writable("write_file", args.get("path"))
         content = args.get("content")
         if not isinstance(content, str):
             raise ToolError("content must be a string")
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(content, encoding="utf-8")
         return f"wrote {len(content)} chars to {p.relative_to(self._root())}"
+
+    def _delete_file(self, args: dict) -> str:
+        p = self._writable("delete_file", args.get("path"))
+        if not p.is_file():
+            raise ToolError(f"no such file: {args.get('path')!r}")
+        p.unlink()
+        return f"deleted {p.relative_to(self._root())}"
 
     def _load_skill(self, args: dict) -> str:
         name = args.get("name")

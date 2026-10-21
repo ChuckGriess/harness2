@@ -17,7 +17,7 @@
 A task is one closed Monday-Sunday window x one watchlist topic, id `<since>/<topic>`; the
 deliverable is output/digest.md. Gold lists live outside the repo, under
 HARNESS2_RADAR_GOLD_DIR/<task id>/gold.json, and are read in exactly one place, `_gold`, reached
-only from `score`, which core calls only after selection committed. The watchlist and source
+only from `score` (after selection committed) and the offline `graded_tasks` count. The watchlist and source
 map are operator-owned inputs: they ride into every rollout's workspace through materialise
 ctx, never through the editable tree, so the improver can change how the agent covers them,
 never what they say. A judge failure (no gold, API error, malformed verdict) is None, never a
@@ -142,7 +142,9 @@ def window_of(task_id: str) -> tuple[date, date]:
 
 def radar_spec() -> BenchSpec:
     """The radar BenchSpec. A value, not a code path."""
-    channel = resolve_channel_model(None, None, effort="high")
+    channel = resolve_channel_model(
+        "claude_api", config.PROPOSER_MODEL_BY_CHANNEL["claude_api"], effort="high"
+    )
     return BenchSpec(
         name="radar",
         runs_root=config.RUNS / "radar",
@@ -322,8 +324,12 @@ class RadarAdapter:
         if problems:
             raise ValueError("radar harness problems:\n- " + "\n- ".join(problems))
 
+    def graded_tasks(self) -> list[str]:
+        """Tasks with a usable gold list; for preflight, never for model context."""
+        return [t for t in self.tasks() if self._gold(t) is not None]
+
     def _gold(self, task_id: str) -> list[dict] | None:
-        """The ONE read of a gold list; reached only from score()."""
+        """The ONE read of a gold list; reached only from score() and graded_tasks()."""
         if self.gold_dir is None:
             return None
         p = self.gold_dir / task_id / GOLD

@@ -93,6 +93,8 @@ class ClaudeLoopTests(unittest.TestCase):
             ("write_file", {"path": "notes.md", "content": "x"}),
             ("write_file", {"path": "output/../notes.md", "content": "x"}),
             ("write_file", {"path": "link/pwned.txt", "content": "x"}),
+            ("delete_file", {"path": "scripts/echo.py"}),
+            ("delete_file", {"path": "link/secret.txt"}),
             ("run_script", {"name": "evil.py", "args": []}),
             ("run_script", {"name": "../scripts/echo.py", "args": []}),
             ("load_skill", {"name": "../x"}),
@@ -218,8 +220,8 @@ class CaSubstrateTests(unittest.TestCase):
         self.assertIn("echo.py", first["system"])
         self.assertEqual(
             [t["name"] for t in first["tools"]],
-            ["web_search", "web_fetch", "read_file", "list_dir", "write_file", "load_skill",
-             "run_script"],
+            ["web_search", "web_fetch", "read_file", "list_dir", "write_file", "delete_file",
+             "load_skill", "run_script"],
         )
         echoed = client.calls[1]["messages"][-1]["content"][0]
         self.assertEqual((echoed["content"].strip(), echoed.get("is_error")), ("hi", None))

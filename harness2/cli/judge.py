@@ -35,7 +35,6 @@ import json
 import sys
 from pathlib import Path
 
-from .. import config
 from ..core import judge as J
 from . import _common as C
 
@@ -162,12 +161,12 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
     modes = C.parse_modes(args.modes)
 
-    config.validate_models(judge=True)
     adapter = C.make_adapter(args.bench, args.subset, args.substrate)
+    C.validate_models_for(adapter, judge=True)
     ns = C.summary_namespace(adapter, args.k, seed=args.seed)
     ns_dir = C.runs_root_for(adapter) / ns
     identity = ns_dir / "config.json"
-    if identity.is_file() and json.loads(identity.read_text()).get("judge") != config.JUDGE_MODEL:
+    if identity.is_file() and json.loads(identity.read_text()).get("judge") != C.judge_model_for(adapter):
         raise SystemExit("Judge model changed for this experiment; choose a new HARNESS2_RUNS_DIR")
     if not ns_dir.is_dir():
         raise SystemExit(

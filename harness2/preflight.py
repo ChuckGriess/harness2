@@ -25,7 +25,28 @@ from .install import PATCHES, missing_runners
 from .substrate.opencode import OpencodeSubstrate
 
 
+def _check_radar(adapter, *, judge: bool) -> list[str]:
+    """The radar/ca cell has no pinned checkout: it needs the SDK, a credential and gold."""
+    errors = []
+    for validate in (adapter.substrate.preflight, adapter.tasks):
+        try:
+            validate()
+        except (OSError, RuntimeError, ValueError) as exc:
+            errors.append(str(exc))
+    if judge:
+        if adapter.gold_dir is None:
+            errors.append(
+                "HARNESS2_RADAR_GOLD_DIR is required for radar judging; set it in .env or the "
+                "shell (draft gold lists with scripts/radar_gold.py)"
+            )
+        elif not adapter.graded_tasks():
+            errors.append(f"no usable gold.json for any radar task under {adapter.gold_dir}")
+    return errors
+
+
 def check(adapter, *, judge=False) -> list[str]:
+    if adapter.spec.name == "radar":
+        return _check_radar(adapter, judge=judge)
     missing = missing_runners()
     if missing:
         return [missing]
