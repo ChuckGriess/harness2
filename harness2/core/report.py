@@ -16,6 +16,9 @@
 
 Ungraded rows and tasks that never completed are excluded from the denominator rather than
 counted as failures.
+
+The trajectory view (`trajectory`, `spine`) reads post-hoc scores of every rollout, written
+by `cli.judge --rollouts` after selection; it is measurement only and feeds nothing back.
 """
 
 from __future__ import annotations
@@ -25,7 +28,7 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from .judge import Scored
-from .schedule import MODE_NAMES
+from .schedule import MODE_NAMES, _modes_of
 
 
 @dataclass
@@ -109,6 +112,90 @@ def summarise(
             s.all_pass = round(100 * sum(1 for r in good if r.all_pass) / len(good), 2)
         out.append(s)
     return out
+
+
+@dataclass(frozen=True)
+class Step:
+    """One rollout of one mode, in the order the recursion ran it, with its post-hoc score."""
+
+    label: str
+    kind: str  # "base" | "candidate" (an INV/DOM edit) | "final" (a composed harness)
+    round: int  # 0 for the references; t for the stages of round t
+    dim: str = ""
+    n_passed: int | None = None
+    n_criteria: int | None = None
+    notes: str = ""
+    selected: bool = False
+
+    @property
+    def frac(self) -> float | None:
+        """None when ungraded — never a zero."""
+        return self.n_passed / self.n_criteria if self.n_criteria else None
+
+
+def _round(label: str) -> int:
+    digits = label.lstrip("abcdefghijklmnopqrstuvwxyz")
+    return int(digits) if digits.isdigit() else 0
+
+
+def trajectory(summary: dict, rows: Sequence[dict], mode: str) -> list[Step]:
+    """One task's rollouts for `mode`, in ledger order, joined to rollouts_judged.json rows.
+
+    Base rows are filed under mode "base" because the references are shared by both modes.
+    """
+    rec = _modes_of(summary).get(mode) or {}
+    task = summary.get("task_id", "")
+    score = {
+        r["label"]: r.get("score") or {}
+        for r in rows
+        if r.get("task") == task and r.get("mode") in (mode, "base")
+    }
+    stages = {s.get("label"): s for s in rec.get("stages") or []}
+    chosen = ((summary.get("selections") or {}).get(mode) or {}).get("chosen_label")
+    k = int(rec.get("k") or summary.get("k") or 0)
+    finals = {f"{'c' if mode == 'seq' else 'agg'}{t}" for t in range(1, k + 1)}
+    out = []
+    for label in (rec.get("ledger") or {}).get("rollouts") or []:
+        got, stage = score.get(label, {}), stages.get(label, {})
+        kind = "base" if label.startswith("base") else "final" if label in finals else "candidate"
+        out.append(
+            Step(
+                label=label,
+                kind=kind,
+                round=0 if kind == "base" else _round(label),
+                dim="BASE" if kind == "base" else str(stage.get("dim") or ""),
+                n_passed=got.get("n_passed"),
+                n_criteria=got.get("n_criteria"),
+                notes=str(stage.get("notes") or ""),
+                selected=label == chosen,
+            )
+        )
+    return out
+
+
+def spine(steps: Sequence[Step]) -> list[tuple[str, float | None]]:
+    """The improvement axis: the mean graded reference, then each composed final in order.
+    Ungraded points stay None and are left out of the reference mean."""
+    graded = [s.frac for s in steps if s.kind == "base" and s.frac is not None]
+    out: list[tuple[str, float | None]] = [("base", st.mean(graded) if graded else None)]
+    out += [(s.label, s.frac) for s in steps if s.kind == "final"]
+    return out
+
+
+def render_trajectory(steps: Sequence[Step], *, title: str = "") -> str:
+    """The printable per-rollout table, one line per step, with the improvement axis last."""
+    lines = [title, "=" * max(40, len(title))] if title else []
+    for s in steps:
+        shown = (
+            "ungraded" if s.frac is None else f"{s.n_passed}/{s.n_criteria} {100 * s.frac:5.1f}%"
+        )
+        mark = " <- selected" if s.selected else ""
+        lines.append(f"  r{s.round} {s.label:<6} {s.dim:<7} {shown}{mark}")
+    axis = " -> ".join(
+        f"{name} {'-' if f is None else f'{100 * f:.1f}%'}" for name, f in spine(steps)
+    )
+    lines += ["", f"  improvement axis: {axis}"]
+    return "\n".join(lines)
 
 
 def render(summaries: Sequence[Summary], *, title: str = "", bench: str = "") -> str:

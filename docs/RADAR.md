@@ -1,7 +1,8 @@
 # AI Radar
 
 A research agent that keeps you current on AI through a watchlist of people, organizations
-and topics, run on the Claude API (`ca` substrate, Sonnet 5.5 by default) and improved by
+and topics, run on the Claude API (`ca` substrate; Sonnet 5.5 writes digests, Opus 5.5 improves, selects
+and judges by default) and improved by
 Harness² against the `radar` benchmark. It writes a cited Markdown digest; it sends nothing
 unless you ask it to.
 
@@ -79,6 +80,21 @@ topic. Gold lists stay outside the repository and never reach the agent or the i
    Use the same flags for all three commands, and a fresh `HARNESS2_RUNS_DIR` when you change a
    model. A judge failure is ungraded and leaves the denominator; it is never a zero.
 
+3. See what the loop improved, round by round. Run sequential mode at `k >= 2` (k=1 gives
+   only base and one composed harness), then score every rollout — one more judge call each,
+   after selection, so the scores never reach the selector or the improver — and render:
+
+   ```bash
+   harness2 --bench radar --substrate ca --k 2 --modes sequential --max-tasks 1 \
+     --only-domains frontier-applications
+   harness2-judge  --bench radar --substrate ca --k 2 --modes sequential --rollouts
+   harness2-report --bench radar --substrate ca --k 2 --modes sequential \
+     --trajectory runs/radar/trajectory.html
+   ```
+
+   The page charts base → c1 → c2, and for every rollout shows its score, the improver's
+   notes, the harness diff each composed round introduced, and the digest it wrote.
+
 ## The sandbox
 
 ```bash
@@ -106,7 +122,8 @@ RADAR_DELIVERY_ALLOWLIST=./proxy/delivery.txt \
 ## Costs
 
 Rollout cost is estimated from token usage and `config.CLAUDE_PRICES` (Sonnet 5.5: $2 input,
-$10 output, $0.10 cache read per million tokens; web search $10 per 1,000) and written to each
+$10 output, $0.10 cache read per million tokens; Opus 5.5, the improver, selector and judge
+default, is twice that; web search $10 per 1,000) and written to each
 run's `result.json` and the digest footer. Per-rollout caps: 60 turns, $3, 20 searches; the
 improver session cap is $5. Core's ledger does not total rollout cost; read it from
 `result.json`.
