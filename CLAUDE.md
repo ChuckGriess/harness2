@@ -161,8 +161,6 @@ picks its own free port.
 
 ## Known Gaps
 
-- No `.gitignore`. `runs/`, `__pycache__/`, and `harness2.egg-info/` show as untracked in
-  `git status` — never stage them.
 - No CI. Run `uvx ruff check .`, `python -m unittest discover -s tests`, and
   `python scripts/check_provenance.py` locally before opening a PR. All three pass as of
   2026-10-20 (5 tests, 47 asset checksums, 0 lint findings).
