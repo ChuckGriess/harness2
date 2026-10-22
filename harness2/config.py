@@ -162,6 +162,43 @@ CODEX_CONTAINER_URL = env("HARNESS2_CODEX_CONTAINER_URL", CODEX_BASE_URL)
 VERTEX_PROXY_KEY = env("HARNESS2_CODEX_API_KEY", "")
 CODEX_HOME_DIR = DEPENDENCIES / "codex" / "home"
 
+CA_MODEL = env("HARNESS2_CA_MODEL", "claude-sonnet-5-5")
+# The review roles (improver, blind selector, judge) default to the stronger model; the
+# executor stays on CA_MODEL, which also keeps the daily digest's cost unchanged.
+CA_REVIEW_MODEL = "claude-opus-5-5"
+CA_EFFORT = env("HARNESS2_CA_EFFORT", "medium")
+CA_MAX_TURNS = env_int("HARNESS2_CA_MAX_TURNS", 60)
+CA_MAX_USD_CENTS = env_int("HARNESS2_CA_MAX_USD_CENTS", 300)
+CA_MAX_SEARCHES = env_int("HARNESS2_CA_MAX_SEARCHES", 20)
+# Fetches are free (tokens only, bounded by CA_MAX_USD_CENTS), so they get a looser cap.
+CA_MAX_FETCHES = env_int("HARNESS2_CA_MAX_FETCHES", 50)
+CA_IMPROVER_MODEL = env("HARNESS2_CA_IMPROVER_MODEL", CA_REVIEW_MODEL)
+CA_IMPROVER_MAX_USD_CENTS = env_int("HARNESS2_CA_IMPROVER_MAX_USD_CENTS", 500)
+CA_SCRIPT_TIMEOUT = 120
+# USD per MTok as (input, output, 5m cache write, cache read), from
+# platform.claude.com/docs/en/about-claude/pricing as checked 2026-10-21. Reported costs are
+# estimates; an unlisted model (e.g. a refusal fallback) is priced at the dearest listed rate.
+CLAUDE_PRICES = {
+    "claude-sonnet-5-5": (2.00, 10.00, 2.50, 0.10),
+    "claude-opus-5-5": (4.00, 20.00, 5.00, 0.20),
+}
+WEB_SEARCH_USD = 0.01
+RADAR_GOLD_DIR = env("HARNESS2_RADAR_GOLD_DIR", "")
+RADAR_JUDGE_MODEL = JUDGE_MODEL or CA_REVIEW_MODEL
+
+
+def require_anthropic():
+    """The anthropic module, or ConfigError naming the extra that provides it."""
+    try:
+        import anthropic
+    except ImportError as e:
+        raise ConfigError(
+            "the Claude API substrate needs the anthropic SDK; install it with "
+            "uv pip install -e '.[claude]'"
+        ) from e
+    return anthropic
+
+
 WB_SOLVER_MODEL = "harness2/solver"
 WB_WEB_JUDGE = "harness2/judge"
 WB_RENDER_PY = sys.executable
@@ -172,7 +209,11 @@ WB_MAX_TRIALS = {"oc": 2, "cx": 2}
 WB_MODEL_CONNECTION = "local_proxy"
 
 DEFAULT_PROPOSER_CHANNEL = "opencode"
-PROPOSER_MODEL_BY_CHANNEL = {"opencode": IMPROVER_MODEL, "claude_cli": IMPROVER_MODEL}
+PROPOSER_MODEL_BY_CHANNEL = {
+    "opencode": IMPROVER_MODEL,
+    "claude_cli": IMPROVER_MODEL,
+    "claude_api": CA_IMPROVER_MODEL,
+}
 PHASE_WIDTH = 2
 TRANSPORT_ATTEMPTS = 2
 PROPOSER_CONCURRENCY = 2

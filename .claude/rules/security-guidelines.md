@@ -20,8 +20,9 @@ it to `dependencies/codex/bridge.json` at mode `0600`. Treat that file as a cred
 read it, print it, include it in a diff, or commit it. Vertex auth is Application Default
 Credentials (`gcloud auth application-default login`) — no key material belongs in the repo.
 
-The repo has no `.gitignore`. Verify `git status` before staging so no `runs/` artifact,
-`bridge.json`, or `.env` is swept in.
+`.gitignore` covers `.env`, `runs/`, and `dependencies/codex/` (where `bridge.json` lives), but
+it does not stop `git add -f` or a broadened pattern. Verify `git status` before staging so no
+`runs/` artifact, `bridge.json`, or `.env` is swept in.
 
 ## Benchmark-answer leakage
 

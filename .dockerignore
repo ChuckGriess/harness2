@@ -1,0 +1,11 @@
+# Allowlist: only what the radar image needs enters the build context. Never .env, .venv,
+# runs/, gold lists, or dependencies/.
+*
+!pyproject.toml
+!README.md
+!MANIFEST.in
+!LICENSE
+!harness2/
+!scripts/radar_gold.py
+**/__pycache__
+**/*.py[cod]

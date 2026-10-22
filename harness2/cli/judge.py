@@ -22,10 +22,13 @@ graded row.
     python3 -m harness2.cli.judge --bench jb --substrate oc --k 2 --modes parallel
 
 With --bases it scores this namespace's reference executions instead, so the initial
-harness can be reported beside the adapted one.
+harness can be reported beside the adapted one. With --rollouts it scores every rollout
+the recursion made, after selection, so `cli.report --trajectory` can show the score per
+round; those scores never reach the selector or the improver.
 
 Output: <runs_root>/<namespace>/judged.json (judge.write format), consumed by cli.report;
-or base_judged.json under --bases, one row per (task, base<i>).
+base_judged.json under --bases, one row per (task, base<i>); rollouts_judged.json under
+--rollouts, one row per (task, mode, label).
 """
 
 from __future__ import annotations
@@ -35,8 +38,8 @@ import json
 import sys
 from pathlib import Path
 
-from .. import config
 from ..core import judge as J
+from ..core import schedule as SCHED
 from . import _common as C
 
 _DERIVED = ("frac", "graded")
@@ -147,6 +150,87 @@ def judge_bases(adapter, ns_dir: Path) -> int:
     return 0 if graded == len(rows) else 2
 
 
+def _executions_root(base_entry: dict) -> Path | None:
+    """The adapter's executions root, read off a recorded reference execution: adapters
+    place each rollout at <root>/<run_id>, so stripping the run_id from run_dir leaves it."""
+    run_id, run_dir = base_entry.get("run_id") or "", Path(base_entry.get("run_dir") or "")
+    depth = len(Path(run_id).parts)
+    if not depth or run_dir.parts[-depth:] != Path(run_id).parts:
+        return None
+    return run_dir.parents[depth - 1]
+
+
+def judge_rollouts(adapter, ns_dir: Path, mode_ns: dict[str, str]) -> int:
+    """Score EVERY rollout each mode recorded, after selection, into rollouts_judged.json.
+
+    Measurement only: nothing here feeds the selector or the improver, which have already
+    run. One row per (task, mode, label); the shared reference executions appear once, under
+    mode "base". A row already graded is kept, so repeating the command resumes it.
+    """
+    out = ns_dir / "rollouts_judged.json"
+    prior = {}
+    if out.is_file():
+        try:
+            prior = {
+                (r["task"], r["mode"], r["label"]): r
+                for r in json.loads(out.read_text())
+                if r.get("score") is not None
+            }
+        except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+            raise SystemExit(f"unreadable {out}: {exc}; move it aside to rebuild")
+    rows = []
+    for summary_path in sorted(ns_dir.glob("*/summary.json")):
+        try:
+            summary = json.loads(summary_path.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"  ! skipping unreadable {summary_path}: {exc}", flush=True)
+            continue
+        task_id = summary.get("task_id", "")
+        base = [e for e in summary.get("base") or [] if isinstance(e, dict) and e.get("run_dir")]
+        root = _executions_root(base[0]) if base else None
+        if root is None:
+            print(f"  ! {task_id}: no recorded reference run_dir to locate rollouts; skipped")
+            continue
+        todo = [("base", e["label"], "BASE", e.get("run_id", "")) for e in base]
+        for mode, rec in SCHED._modes_of(summary).items():
+            if mode not in mode_ns:
+                continue
+            dims = {s.get("label"): s.get("dim", "") for s in rec.get("stages") or []}
+            for label in (rec.get("ledger") or {}).get("rollouts") or []:
+                if not label.startswith("base"):
+                    run_id = f"{mode_ns[mode]}/{task_id}/{label}"
+                    todo.append((mode, label, dims.get(label, ""), run_id))
+        for mode, label, dim, run_id in todo:
+            key = (task_id, mode, label)
+            if key in prior:
+                rows.append(prior[key])
+                continue
+            run_dir = root / run_id
+            if not run_dir.is_dir():
+                print(f"  ! {task_id} {mode}/{label}: no run directory at {run_dir}; skipped")
+                continue
+            try:
+                got = adapter.score(run_dir, task_id)
+            except Exception as exc:
+                got = None
+                print(f"  {task_id[:44]:<44} {mode}/{label} ERROR {type(exc).__name__}: {exc}")
+            else:
+                shown = "-" if got is None else f"{got.get('n_passed')}/{got.get('n_criteria')}"
+                print(f"  {task_id[:44]:<44} {mode}/{label} {shown}", flush=True)
+            rows.append(
+                {"task": task_id, "mode": mode, "label": label, "dim": dim, "run_id": run_id,
+                 "score": got}
+            )
+    if not rows:
+        print(f"no rollouts recorded under {ns_dir}; wrote nothing", flush=True)
+        return 2
+    out.write_text(json.dumps(rows, indent=1, default=str), encoding="utf-8")
+    graded = sum(1 for r in rows if r["score"] is not None)
+    print(f"wrote {out}: {len(rows)} row(s), {graded} graded, {len(rows) - graded} ungraded "
+          f"(judge failure — NOT zeros)")
+    return 0 if graded == len(rows) else 2
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="harness2.cli.judge", description=__doc__, formatter_class=C.HelpFormatter
@@ -159,15 +243,23 @@ def main(argv: list[str] | None = None) -> int:
         help="score this namespace's reference executions into base_judged.json "
         "instead of the selected runs",
     )
+    p.add_argument(
+        "--rollouts",
+        action="store_true",
+        help="score EVERY rollout (base, inv, dom, composed) of the selected modes into "
+        "rollouts_judged.json, to show how the score moves across the recursion",
+    )
     args = p.parse_args(argv)
+    if args.bases and args.rollouts:
+        raise SystemExit("--bases and --rollouts are exclusive; --rollouts already scores bases")
     modes = C.parse_modes(args.modes)
 
-    config.validate_models(judge=True)
     adapter = C.make_adapter(args.bench, args.subset, args.substrate)
+    C.validate_models_for(adapter, judge=True)
     ns = C.summary_namespace(adapter, args.k, seed=args.seed)
     ns_dir = C.runs_root_for(adapter) / ns
     identity = ns_dir / "config.json"
-    if identity.is_file() and json.loads(identity.read_text()).get("judge") != config.JUDGE_MODEL:
+    if identity.is_file() and json.loads(identity.read_text()).get("judge") != C.judge_model_for(adapter):
         raise SystemExit("Judge model changed for this experiment; choose a new HARNESS2_RUNS_DIR")
     if not ns_dir.is_dir():
         raise SystemExit(
@@ -175,6 +267,12 @@ def main(argv: list[str] | None = None) -> int:
         )
     if args.bases:
         return judge_bases(adapter, ns_dir)
+    if args.rollouts:
+        mode_ns = {
+            m: SCHED.ns(adapter.spec.name, adapter.substrate.name, m, args.k, seed=args.seed)
+            for m in modes
+        }
+        return judge_rollouts(adapter, ns_dir, mode_ns)
 
     sels = collect_selections(ns_dir, modes)
     if not sels:

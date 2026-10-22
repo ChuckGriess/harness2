@@ -6,3 +6,4 @@ include dependencies/README.md dependencies/PINNED.md
 global-exclude __pycache__ *.py[cod] *.log
 
 recursive-include assets *.png
+recursive-include harness2/benchmarks/radar_data *.md *.json *.py

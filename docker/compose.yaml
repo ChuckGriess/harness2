@@ -1,0 +1,50 @@
+# AI Radar sandbox. The harness2 container sits on an internal-only network with no route out;
+# its only egress is the squid proxy, which allows the hosts in proxy/allowlist.txt and, when
+# RADAR_DELIVERY_ALLOWLIST points at proxy/delivery.txt, the Slack webhook host.
+# Anthropic's web_search / web_fetch run server-side and need no egress from here.
+#
+#   docker compose -f docker/compose.yaml build
+#   docker compose -f docker/compose.yaml run --rm harness2               # harness2-check
+#   docker compose -f docker/compose.yaml run --rm harness2 harness2-radar
+#   RADAR_DELIVERY_ALLOWLIST=./proxy/delivery.txt \
+#     docker compose -f docker/compose.yaml run --rm harness2 harness2-radar --deliver slack
+name: harness2-radar
+
+services:
+  proxy:
+    image: ubuntu/squid:6.10-24.10_beta@sha256:c9f5212b147a766529c7b026e2bebed37b998d33d0066b658596af5eba7cc65c
+    volumes:
+      - ./proxy/squid.conf:/etc/squid/squid.conf:ro
+      - ./proxy/allowlist.txt:/etc/squid/allowlist.txt:ro
+      - ${RADAR_DELIVERY_ALLOWLIST:-./proxy/delivery-off.txt}:/etc/squid/delivery.txt:ro
+    networks: [sandbox, egress]
+
+  harness2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: harness2-radar:local
+    depends_on: [proxy]
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      HTTPS_PROXY: http://proxy:3128
+      HTTP_PROXY: http://proxy:3128
+      https_proxy: http://proxy:3128
+      http_proxy: http://proxy:3128
+      HARNESS2_RUNS_DIR: /work/runs
+      HARNESS2_RADAR_GOLD_DIR: /gold
+    volumes:
+      - ../runs/docker:/work/runs
+      - ${HARNESS2_RADAR_GOLD_HOST_DIR:-./no-gold}:/gold:ro
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [sandbox]
+
+networks:
+  sandbox:
+    internal: true
+  egress: {}

@@ -1,0 +1,184 @@
+<!doctype html><html lang=en><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>Implementation plan</title>
+<style>
+:root{
+  --bg:#0f1117;--panel:#171a23;--panel2:#1e222e;--line:#2a2f3d;
+  --ink:#e7e9ee;--ink2:#9aa3b2;--ink3:#6b7384;
+  --solo:#6366f1;--roster:#f59e0b;--good:#34d399;--accent:#818cf8;--warn:#f87171;
+}
+*{box-sizing:border-box}
+body{font:15px/1.6 ui-sans-serif,-apple-system,system-ui,"Segoe UI",sans-serif;
+  margin:0;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+.wrap{max-width:920px;margin:0 auto;padding:36px 22px 90px}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace}
+h1{font-size:24px;margin:0 0 4px;letter-spacing:-.02em}
+.lede{color:var(--ink2);font-size:15px;margin:0 0 6px}
+h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink2);margin:36px 0 12px;display:flex;align-items:center;gap:9px}
+h2::before{content:"";width:3px;height:15px;background:var(--accent);border-radius:2px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:12px 0}
+code,.kbd{font-family:ui-monospace,Menlo,monospace;font-size:.86em;background:var(--panel2);
+  border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:#cdd3e0}
+.kbd{color:var(--accent);white-space:nowrap}
+.tag{font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 9px;border-radius:20px;text-transform:uppercase}
+.tag.new{background:rgba(52,211,153,.14);color:#34d399;border:1px solid rgba(52,211,153,.4)}
+.tag.mod{background:rgba(129,140,248,.14);color:#a5b4fc;border:1px solid rgba(129,140,248,.4)}
+.muted{color:var(--ink3)}.warn{color:var(--warn)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13.5px;margin-top:4px}
+td,th{padding:8px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--ink3);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+tr:last-child td{border-bottom:none}
+ul{margin:8px 0 0;padding-left:18px;color:var(--ink2)}
+li{margin:5px 0}
+ol.tasks{list-style:none;counter-reset:t;padding-left:0;margin:0}
+ol.tasks li{counter-increment:t;display:flex;gap:9px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--line)}
+ol.tasks li:last-child{border-bottom:none}
+ol.tasks input{margin-top:4px;flex:none;accent-color:var(--accent)}
+.area{color:var(--ink3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 4px;font-weight:600}
+.foot{color:var(--ink3);font-size:13px;margin-top:36px;border-top:1px solid var(--line);padding-top:16px}
+a{color:var(--accent)}
+.meta{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:13.5px;color:var(--ink2)}
+.meta dt{color:var(--ink3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;align-self:center}
+.meta dd{margin:0}
+.mermaid{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0;text-align:center;overflow:auto}
+</style></head><body><div class=wrap>
+<h1>Implementation plan — AI Radar: a Claude API research agent optimized by Harness² inside a Docker sandbox</h1>
+<p class=lede>HOW — file structure, ordered TDD tasks, test strategy, and rollback for the design spec.</p>
+
+<div class=card>
+  <dl class=meta>
+    <dt>Date</dt><dd>2026-10-20</dd>
+    <dt>Design spec</dt><dd><a href="../specs/2026-10-20-ai-radar-claude-sandbox-design.html">../specs/2026-10-20-ai-radar-claude-sandbox-design.html</a></dd>
+  </dl>
+</div>
+
+<h2>File structure</h2>
+<div class=card>
+  <table>
+    <tr><th>File</th><th>Responsibility</th><th>State</th></tr>
+    <tr><td class=mono>pyproject.toml</td><td>Add the pinned [claude] extra (anthropic 1.x); add harness2-radar to [project.scripts]; dependencies stays []</td><td><span class="tag mod">modified</span></td></tr>
+    <tr><td class=mono>harness2/config.py</td><td>CA_MODEL, CA_MAX_TURNS, CA_MAX_USD, RADAR_GOLD_DIR, CLAUDE_PRICES table (dated comment), require_anthropic() raising ConfigError with the install command</td><td><span class="tag mod">modified</span></td></tr>
+    <tr><td class=mono>harness2/claude_loop.py</td><td>The single Claude API tool loop: workspace-scoped client tools, server-tool passthrough, stop-reason handling, turn/USD caps, JSONL capture. Lazy-imports anthropic</td><td><span class="tag new">new</span></td></tr>
+    <tr><td class=mono>harness2/substrate/claude_api.py</td><td>CaSubstrate: CA_SURFACE, materialise (workspace_agents_md), execute through claude_loop, read_trajectory from JSONL into the shared grammar, preflight</td><td><span class="tag new">new</span></td></tr>
+    <tr><td class=mono>harness2/core/spec.py</td><td>Add &#x27;claude_api&#x27; to CHANNELS; enforce a bare Anthropic id, as for claude_cli</td><td><span class="tag mod">modified</span></td></tr>
+    <tr><td class=mono>harness2/core/proposer.py</td><td>_claude_api channel method that calls claude_loop with file tools scoped to the proposer cwd; returns (text, cost, err) like its siblings</td><td><span class="tag mod">modified</span></td></tr>
+    <tr><td class=mono>harness2/benchmarks/radar.py</td><td>RadarAdapter + radar_spec + base harness tree (prompts, fetcher scripts, a skill) + task table + gold-aware score()</td><td><span class="tag new">new</span></td></tr>
+    <tr><td class=mono>harness2/benchmarks/radar_tasks.json</td><td>Task table: id, window_start, window_end, domain (one of the six watchlist topics), focus notes. Contains no answers</td><td><span class="tag new">new</span></td></tr>
+    <tr><td class=mono>assets/radar/watchlist.md</td><td>Operator&#x27;s watchlist verbatim (lens, people, organizations); injected into every task prompt; never in the editable tree</td><td><span class="tag new">new</span></td></tr>
+    <tr><td class=mono>assets/radar/sources.json</td><td>Entity/topic → verified feed URLs, repos and channel ids, with &#x27;search-only&#x27; markers for X/LinkedIn-only voices; read by fetchers, gold drafting and allowlist generation</td><td><span class="tag new">new</span></td></tr>
+    <tr><td class=mono>MANIFEST.in</td><td>Ship assets/radar/*.md and *.json in the sdist</td><td><span class="tag mod">modified</span></td></tr>
+    <tr><td class=mono>harness2/cli/_common.py</td><td>Add &#x27;radar&#x27; to BENCHES and &#x27;ca&#x27; to SUBSTRATES; adapter factory wiring</td><td><span class="tag mod">modified</span></td></tr>
+    <tr><td class=mono>harness2/cli/radar.py</td><td>harness2-radar: run the adopted/base harness on the current window, write the dated digest, opt-in --deliver slack|email with a printed preview</td><td><span class="tag new">new</span></td></tr>
+    <tr><td class=mono>harness2/preflight.py</td><td>harness2-check probes for the ca/radar cell: extra installed, API key name present (never the value), gold dir readable, proxy reachable</td><td><span class="tag mod">modified</span></td></tr>
+    <tr><td class=mono>scripts/radar_gold.py</td><td>Operator helper: draft candidate gold items for a closed window from the fetchers, for human curation into HARNESS2_RADAR_GOLD_DIR. Writes no gold itself without --write</td><td><span class="tag new">new</span></td></tr>
+    <tr><td class=mono>docker/Dockerfile</td><td>python:3.12-slim, uv, non-root user, pip install -e &#x27;.[claude]&#x27;, no secrets, ENTRYPOINT harness2</td><td><span class="tag new">new</span></td></tr>
+    <tr><td class=mono>docker/compose.yaml</td><td>harness2 service on an internal network + egress proxy sidecar (digest-pinned image); /work and gold mounts; env_file ../.env; read_only rootfs + tmpfs</td><td><span class="tag new">new</span></td></tr>
+    <tr><td class=mono>docker/proxy/allowlist.txt</td><td>Egress allowlist: api.anthropic.com, export.arxiv.org, api.github.com, hn.algolia.com, configured RSS hosts; delivery hosts in a separate opt-in file</td><td><span class="tag new">new</span></td></tr>
+    <tr><td class=mono>tests/test_claude_api.py</td><td>Fake-client tests: loop, tool sandbox, stop reasons, cost, trajectory, budget R/P, radar leakage, judge None, delivery gating, import-without-extra</td><td><span class="tag new">new</span></td></tr>
+    <tr><td class=mono>docs/RADAR.md</td><td>Operator guide: setup, gold curation, dry-run → one-task → sweep escalation, daily digests, delivery, cost math</td><td><span class="tag new">new</span></td></tr>
+    <tr><td class=mono>docs/SETUP.md</td><td>Document env var names only: HARNESS2_CA_MODEL, HARNESS2_RADAR_GOLD_DIR, HARNESS2_RADAR_SLACK_WEBHOOK, HARNESS2_RADAR_SMTP_*</td><td><span class="tag mod">modified</span></td></tr>
+  </table>
+</div>
+
+<h2>Tasks</h2>
+<div class=card>
+  <p class=muted style="margin:0 0 6px">Bite-sized TDD steps. Execute top to bottom: write a failing test → implement minimal → run → commit.</p>
+  <div class=area>Phase 0 results (2026-10-21)</div>
+  <ol class=tasks>
+    <li><input type=checkbox> DONE anthropic SDK: latest is 1.17.0 (requires Python &gt;=3.10) → pin [claude] = [&#x27;anthropic==1.17.0&#x27;]</li>
+    <li><input type=checkbox> DONE Pricing (platform.claude.com/docs/en/about-claude/pricing): Sonnet 5.5 input $2, output $10, 5m cache write $2.50, cache read $0.10 per MTok; web search $10 per 1,000 searches (errored searches unbilled); web fetch has no extra charge; code execution is free alongside the _20260209 web tools</li>
+    <li><input type=checkbox> DONE ns(): &#x27;ca&#x27; fits benchmark-substrate-modeK; update the error text that names only &#x27;oc&#x27; | &#x27;cx&#x27;</li>
+    <li><input type=checkbox> GAP run_sweep._check_identity records executor as SOLVER_MODEL_OC if oc else SOLVER_MODEL_CX, so a &#x27;ca&#x27; run would silently record the Codex model and a Sonnet version change would not block resume. Fix in Phase 3 with a regression test</li>
+    <li><input type=checkbox> DONE feeds that resolve (RSS/Atom/JSON): oreilly.com/radar/feed/, asimovaddendum.substack.com/feed, timoreilly.substack.com/feed, oneusefulthing.org/feed, karpathy.bearblog.dev/feed/, karpathy.github.io/feed.xml, YouTube Karpathy channel UCXUPKJO5MZQN11PqgIvyuvQ, fast.ai/index.xml, thinkingmachines.ai/blog/index.xml, huggingface.co/blog/feed.xml, databricks.com/feed, kozyrkov.medium.com/feed, decision.substack.com/feed, api.github.com tinker-cookbook releases, hn.algolia.com, export.arxiv.org</li>
+    <li><input type=checkbox> OPEN no RSS found for The Batch, Anthropic news, Dataiku or Answer.AI → mark them &#x27;page&#x27; sources (agent uses web_fetch on the index page); X and LinkedIn stay search-only</li>
+  </ol>
+  <div class=area>Phase 0: verify before building</div>
+  <ol class=tasks>
+    <li><input type=checkbox> Confirm the current anthropic 1.x version on PyPI and pin it exactly in [claude]</li>
+    <li><input type=checkbox> Fetch live docs for web_search_20260209 / web_fetch_20260209 pricing and the tool-result shapes; record the price table date in config.CLAUDE_PRICES</li>
+    <li><input type=checkbox> Check core/schedule.ns() and the saved-config check so &#x27;ca&#x27; and the model id participate in the namespace and resume guard</li>
+    <li><input type=checkbox> Resolve and verify a feed URL for every watchlist entity (Substack /feed, blog RSS, GitHub repos, YouTube channel ids); mark X/LinkedIn-only voices search-only</li>
+  </ol>
+  <div class=area>Phase 1: claude_loop + CaSubstrate</div>
+  <ol class=tasks>
+    <li><input type=checkbox> Write failing tests: a fake client scripted with tool_use → end_turn produces a JSONL capture; path traversal / absolute path / unknown script return is_error</li>
+    <li><input type=checkbox> Implement claude_loop.run(workspace, system, task, tools_cfg, caps) with lazy `import anthropic` via config.require_anthropic()</li>
+    <li><input type=checkbox> Write failing tests for stop reasons: refusal (error recorded, not delivered), pause_turn (resumed), max_tokens (recorded), server-tool error object → [ERROR]</li>
+    <li><input type=checkbox> Implement stop-reason handling and the turn + USD caps; cost = usage × CLAUDE_PRICES + search request fees</li>
+    <li><input type=checkbox> Implement CaSubstrate (CA_SURFACE mirroring the opencode always-on set, materialise via workspace_agents_md, read_trajectory into [ACTION]/[OBSERVATION]/[ERROR])</li>
+    <li><input type=checkbox> Run python -m unittest tests.test_claude_api; uvx ruff check .</li>
+    <li><input type=checkbox> Commit: feat(substrate): add Claude API substrate and tool loop</li>
+  </ol>
+  <div class=area>Phase 2: radar benchmark + judge</div>
+  <ol class=tasks>
+    <li><input type=checkbox> Write failing test: task_prompt and the proposer workspace contain no gold bytes, and leak_globs covers gold.json</li>
+    <li><input type=checkbox> Write assets/radar/watchlist.md (operator&#x27;s list verbatim) and assets/radar/sources.json (feeds verified in Phase 0); failing test first for watchlist↔sources↔allowlist consistency</li>
+    <li><input type=checkbox> Write radar_tasks.json with 18 seed tasks (3 closed weeks × 6 watchlist topics); add a train/test partition via scripts/split_tasks.py</li>
+    <li><input type=checkbox> Build the base harness tree: systemprompt.md, guardrails.md, tool_guidance.md, skills/triage-release/SKILL.md, scripts/{arxiv,gh_releases,rss,hn}.py (stdlib, timeouts, non-zero exit on failure)</li>
+    <li><input type=checkbox> Write BenchPrompts wording in terms of the work (tracking AI releases for a CTO), avoiding the validator&#x27;s banned words (benchmark, evaluation, grader, rubric, score)</li>
+    <li><input type=checkbox> Write failing test: judge raises / returns malformed JSON → score() is None; report denominator excludes it</li>
+    <li><input type=checkbox> Implement RadarAdapter (tasks, domain_of, task_prompt, execute, delivered = output/digest.md non-empty with ≥1 URL, deliverable_text, validate_tree, score)</li>
+    <li><input type=checkbox> Run the full suite + an import-graph assertion that core/ never imports benchmarks.radar.score</li>
+    <li><input type=checkbox> Commit: feat(benchmarks): add ai-radar benchmark</li>
+  </ol>
+  <div class=area>Phase 3: proposer channel + CLI wiring</div>
+  <ol class=tasks>
+    <li><input type=checkbox> Write failing test: resolve_channel_model(&#x27;claude_api&#x27;, &#x27;claude-sonnet-5-5&#x27;) is valid; a provider-prefixed id raises</li>
+    <li><input type=checkbox> Add &#x27;claude_api&#x27; to CHANNELS and implement Proposer._claude_api over claude_loop (file tools scoped to cwd; claude_cli&#x27;s _DROP_ENV untouched)</li>
+    <li><input type=checkbox> Wire &#x27;radar&#x27;/&#x27;ca&#x27; into cli/_common.py; extend preflight for the cell</li>
+    <li><input type=checkbox> Write failing test: recursion with the fake client at k in {1,2} gives (R, P) == (4k, 3k) via subTest</li>
+    <li><input type=checkbox> Write failing test: --dry-run with the client patched to raise makes no calls</li>
+    <li><input type=checkbox> Commit: feat(cli): wire radar benchmark and claude_api channel</li>
+  </ol>
+  <div class=area>Phase 4: daily digest, delivery, Docker</div>
+  <ol class=tasks>
+    <li><input type=checkbox> Write failing tests: harness2-radar without --deliver never touches urlopen/SMTP; --deliver slack without the webhook env var raises ConfigError before the agent runs</li>
+    <li><input type=checkbox> Implement cli/radar.py (current window, adopted-harness lookup with fallback to base, dated digest, preview print, stdlib senders)</li>
+    <li><input type=checkbox> Write the Dockerfile and compose.yaml (internal network, proxy sidecar, read-only rootfs, tmpfs /tmp, /work volume, gold mounted read-only)</li>
+    <li><input type=checkbox> Verify in the container: harness2-demo passes; curl api.anthropic.com via the proxy succeeds; curl example.com fails; docker inspect/history shows no secret values</li>
+    <li><input type=checkbox> Write docs/RADAR.md and the SETUP.md env var names</li>
+    <li><input type=checkbox> Commit: feat(radar): daily digest entry point and Docker sandbox</li>
+  </ol>
+  <div class=area>Phase 5: first paid slice (needs explicit spend confirmation)</div>
+  <ol class=tasks>
+    <li><input type=checkbox> Draft gold for the 3 seed weeks from watchlist sources with scripts/radar_gold.py; operator prunes</li>
+    <li><input type=checkbox> harness2-check --bench radar --substrate ca</li>
+    <li><input type=checkbox> harness2 --bench radar --substrate ca --k 1 --max-tasks 1 --only-domains frontier-applications (≈ 4 rollouts + 3 improver stages); then harness2-judge / harness2-report with identical flags</li>
+    <li><input type=checkbox> Record measured cost per task to size a full sweep before proposing one</li>
+  </ol>
+</div>
+
+<h2>Test strategy</h2>
+<div class=card>
+  <table>
+    <tr><th>Acceptance / failure mode</th><th>Proven by</th></tr>
+    <tr><td>Gold leakage</td><td class=mono>Grep the staged task_prompt, task_files and proposer workspace for gold.json bytes; assert leak_globs covers it</td></tr>
+    <tr><td>Judge failure ≠ 0</td><td class=mono>Patched judge raises / returns junk → score None; report row excluded from the denominator</td></tr>
+    <tr><td>Selection blind to judge</td><td class=mono>Import-graph assertion over core/ and the selection path</td></tr>
+    <tr><td>Tool sandbox</td><td class=mono>Parametrised subTests: &#x27;..&#x27;, absolute, symlink-out, write outside output/, unknown script → is_error, filesystem unchanged</td></tr>
+    <tr><td>No agent-driven delivery</td><td class=mono>Sender patched to raise during execute() and harness2-radar without --deliver</td></tr>
+    <tr><td>Caps / runaway cost</td><td class=mono>Fake client that never ends → stops at MAX_TURNS / USD cap, ok=False, error recorded, ledger counts it</td></tr>
+    <tr><td>Stop reasons + server-tool errors</td><td class=mono>Scripted refusal / pause_turn / max_tokens / max_uses_exceeded responses → expected run state and [ERROR] lines</td></tr>
+    <tr><td>Budget contract</td><td class=mono>Real recursion with fake client, (R, P) == (4k, 3k) for k in {1,2}</td></tr>
+    <tr><td>No runtime deps</td><td class=mono>Subprocess test in a venv without anthropic: import harness2 succeeds; --substrate ca raises ConfigError with the install command</td></tr>
+    <tr><td>Egress + secrets</td><td class=mono>Manual container checks in Phase 4 (curl allowed vs blocked host; docker inspect/history), recorded in the PR test plan</td></tr>
+    <tr><td>Never a live model in tests</td><td class=mono>All tests use a fake client object; anthropic.Anthropic patched to raise at module level in test setUp</td></tr>
+  </table>
+</div>
+
+<h2>Risks &amp;amp; rollback</h2>
+<div class=card>
+  <ul>
+    <li><b>Risk:</b> Gold curation is manual and is the real bottleneck; thin gold rewards precision over recall — <b>mitigation:</b> Start with 18 tasks; radar_gold.py drafts candidates from watchlist sources; track gold size per task in the report</li>
+    <li><b>Risk:</b> Live web drift makes rollouts non-reproducible across days — <b>mitigation:</b> Closed past windows; the run_dir caches fetched sources and the judge grades against that cache; record the run date with results</li>
+    <li><b>Risk:</b> Prompt injection from fetched pages steers the agent — <b>mitigation:</b> Narrow tool surface (no bash, no send, writes only to output/); container egress allowlist; delivery from host code only</li>
+    <li><b>Risk:</b> Price table goes stale, so reported cost is wrong — <b>mitigation:</b> Dated CLAUDE_PRICES constant; Phase 0 verification; cost is labelled an estimate in report output</li>
+    <li><b>Risk:</b> Improver-edited fetcher scripts attempt off-allowlist egress or heavy work — <b>mitigation:</b> Proxy allowlist + run_script timeout; validate_tree rejects non-stdlib imports in scripts/</li>
+    <li><b>Risk:</b> Touching core/proposer.py and core/spec.py widens the review surface on a research codebase — <b>mitigation:</b> The changes are additive (new channel value + method); existing five regressions must stay green; channel tests added</li>
+    <li><b>Rollback:</b> Each phase is its own commit on a feature branch (feat/ai-radar). Revert the phase commits in reverse order; nothing outside the new files changes behavior for existing benchmarks or substrates, and dependencies stays [].</li>
+  </ul>
+</div>
+
+<p class=foot>Generated by <span class=kbd>/intech-agex:drive</span> (spec-first, Tier 2) from the plan JSON. Execute tasks top to bottom — each lands in one commit with its test passing.</p>
+</div></body></html>
