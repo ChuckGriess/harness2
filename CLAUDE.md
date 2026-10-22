@@ -1,13 +1,5 @@
 # Harness² — Agentic Development Context
 
-## Rules
-
-@.claude/rules/code-style.md
-@.claude/rules/testing-standards.md
-@.claude/rules/benchmark-runs.md
-@.claude/rules/security-guidelines.md
-@.claude/rules/vendored-code.md
-
 ## Project Overview
 
 Harness² (arXiv 2610.14224) is a framework for **recursive agent harnessing**: optimizing the
@@ -53,19 +45,11 @@ additionally need Node.js 20+, gcloud CLI, Pandoc/Poppler (LAB), and Docker (Wor
 
 ## Architecture
 
-Three axes stay orthogonal; the seam is `harness2/core/spec.py`.
-
-| Axis | Location | Owns |
-|---|---|---|
-| Method | `harness2/core/` | recursion, prompts, selection, library, ledger — substrate- and benchmark-free |
-| Substrate | `harness2/substrate/` | the agent framework a rollout runs under (OpenCode default, Codex) |
-| Benchmark | `harness2/benchmarks/` | tasks, splits, launchers, deliverables, grading (JobBench, LAB, WorkBuddy) |
+Three axes stay orthogonal — method (`harness2/core/`, substrate- and benchmark-free),
+substrate, benchmark; the seam is `harness2/core/spec.py`.
 
 Adding a benchmark or substrate means supplying a spec + adapter, not branching inside
 `core/`. Benchmark text reaches prompts as **values**, never as branches in `prompts.py`.
-
-Entry points (`pyproject.toml [project.scripts]`): `harness2` (adapt), `harness2-judge`,
-`harness2-report`, `harness2-setup`, `harness2-check`, `harness2-demo`, `harness2-bridge`.
 
 ## Code Conventions
 
@@ -162,8 +146,7 @@ picks its own free port.
 ## Known Gaps
 
 - No CI. Run `uvx ruff check .`, `python -m unittest discover -s tests`, and
-  `python scripts/check_provenance.py` locally before opening a PR. All three pass as of
-  2026-10-20 (5 tests, 47 asset checksums, 0 lint findings).
+  `python scripts/check_provenance.py` locally before opening a PR.
 - ruff is configured in `pyproject.toml` but declared in no extra and absent from `.venv` —
   invoke it as `uvx ruff` rather than assuming it is on `PATH`.
 
