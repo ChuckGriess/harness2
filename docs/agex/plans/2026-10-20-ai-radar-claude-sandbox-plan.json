@@ -185,7 +185,7 @@
       "steps": [
         "Draft gold for the 3 seed weeks from watchlist sources with scripts/radar_gold.py; operator prunes",
         "harness2-check --bench radar --substrate ca",
-        "harness2 --bench radar --substrate ca --k 1 --max-tasks 1 --only-domains research (≈ 4 rollouts + 3 improver stages); then harness2-judge / harness2-report with identical flags",
+        "harness2 --bench radar --substrate ca --k 1 --max-tasks 1 --only-domains frontier-applications (≈ 4 rollouts + 3 improver stages); then harness2-judge / harness2-report with identical flags",
         "Record measured cost per task to size a full sweep before proposing one"
       ]
     }

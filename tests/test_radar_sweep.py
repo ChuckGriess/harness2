@@ -16,6 +16,7 @@
 
 import contextlib
 import copy
+import importlib
 import io
 import json
 import re
@@ -153,7 +154,9 @@ class RadarSweepTests(unittest.TestCase):
             with self.subTest(k=k):
                 client = RuleClient(executor_rule)
                 a = radar.RadarAdapter(client=client, runs_root=self.root / f"runs{k}")
-                prop = RadarStubProposer(ChannelSpec("claude_api", MODEL))
+                # The adapter's own channel, so _selector_for reuses this stub rather than
+                # building a live Proposer for the selector channel.
+                prop = RadarStubProposer(a.spec.channels["proposer"])
                 prop.missions = []
                 result = schedule.run_domain(
                     "open-models-and-tooling", [TASK], k, adapter=a, prop=prop,
@@ -225,6 +228,18 @@ class RadarSweepTests(unittest.TestCase):
             C.make_adapter("radar", None, "oc")
         self.assertEqual(C.judge_model_for(C.make_adapter("radar", None, "ca")),
                          config.RADAR_JUDGE_MODEL)
+
+    def test_review_roles_default_to_opus_and_the_executor_to_sonnet(self):
+        # An empty variable reads as unset, and load_dotenv's setdefault keeps it empty.
+        unset = {v: "" for v in ("HARNESS2_CA_MODEL", "HARNESS2_CA_IMPROVER_MODEL",
+                                 "HARNESS2_JUDGE_MODEL")}
+        self.addCleanup(importlib.reload, config)
+        with patch.dict("os.environ", unset):
+            importlib.reload(config)
+            got = (config.CA_MODEL, config.CA_IMPROVER_MODEL,
+                   config.PROPOSER_MODEL_BY_CHANNEL["claude_api"], config.RADAR_JUDGE_MODEL)
+        self.assertEqual(got, ("claude-sonnet-5-5", "claude-opus-5-5", "claude-opus-5-5",
+                               "claude-opus-5-5"))
 
 
 if __name__ == "__main__":

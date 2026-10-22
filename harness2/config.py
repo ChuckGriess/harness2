@@ -163,13 +163,16 @@ VERTEX_PROXY_KEY = env("HARNESS2_CODEX_API_KEY", "")
 CODEX_HOME_DIR = DEPENDENCIES / "codex" / "home"
 
 CA_MODEL = env("HARNESS2_CA_MODEL", "claude-sonnet-5-5")
+# The review roles (improver, blind selector, judge) default to the stronger model; the
+# executor stays on CA_MODEL, which also keeps the daily digest's cost unchanged.
+CA_REVIEW_MODEL = "claude-opus-5-5"
 CA_EFFORT = env("HARNESS2_CA_EFFORT", "medium")
 CA_MAX_TURNS = env_int("HARNESS2_CA_MAX_TURNS", 60)
 CA_MAX_USD_CENTS = env_int("HARNESS2_CA_MAX_USD_CENTS", 300)
 CA_MAX_SEARCHES = env_int("HARNESS2_CA_MAX_SEARCHES", 20)
 # Fetches are free (tokens only, bounded by CA_MAX_USD_CENTS), so they get a looser cap.
 CA_MAX_FETCHES = env_int("HARNESS2_CA_MAX_FETCHES", 50)
-CA_IMPROVER_MODEL = env("HARNESS2_CA_IMPROVER_MODEL", CA_MODEL)
+CA_IMPROVER_MODEL = env("HARNESS2_CA_IMPROVER_MODEL", CA_REVIEW_MODEL)
 CA_IMPROVER_MAX_USD_CENTS = env_int("HARNESS2_CA_IMPROVER_MAX_USD_CENTS", 500)
 CA_SCRIPT_TIMEOUT = 120
 # USD per MTok as (input, output, 5m cache write, cache read), from
@@ -181,7 +184,7 @@ CLAUDE_PRICES = {
 }
 WEB_SEARCH_USD = 0.01
 RADAR_GOLD_DIR = env("HARNESS2_RADAR_GOLD_DIR", "")
-RADAR_JUDGE_MODEL = JUDGE_MODEL or CA_MODEL
+RADAR_JUDGE_MODEL = JUDGE_MODEL or CA_REVIEW_MODEL
 
 
 def require_anthropic():
