@@ -214,13 +214,16 @@ def _check_identity(adapter, args, namespace_dir: Path) -> None:
             "oc": config.SOLVER_MODEL_OC,
             "cx": config.SOLVER_MODEL_CX,
             "ca": config.CA_MODEL,
+            "cma": config.CA_MODEL,
         }[args.substrate],
         "improver": adapter.spec.channels["proposer"].model,
         "judge": C.judge_model_for(adapter),
         "project": config.VERTEX_PROJECT,
         "location": config.VERTEX_REGION,
         "judge_endpoint": config.JB_JUDGE_API_BASE,
-        "endpoint": config.CODEX_BASE_URL if args.substrate == "cx" else "",
+        "endpoint": {"cx": config.CODEX_BASE_URL, "cma": config.CMA_AGENT_ID}.get(
+            args.substrate, ""
+        ),
         "split": args.split,
         "tasks": _stream_for(adapter, args)[1],
         "max_tasks": args.max_tasks,

@@ -183,6 +183,13 @@ CLAUDE_PRICES = {
     "claude-opus-5-5": (4.00, 20.00, 5.00, 0.20),
 }
 WEB_SEARCH_USD = 0.01
+# Claude Managed Agents (substrate `cma`): ids created once by `harness2-setup radar
+# --substrate cma`; rollouts reuse the CA_* caps above. The digest agent and vault serve the
+# scheduled daily digest (`harness2-radar --promote`), never optimisation rollouts.
+CMA_AGENT_ID = env("HARNESS2_CMA_AGENT_ID", "")
+CMA_ENVIRONMENT_ID = env("HARNESS2_CMA_ENVIRONMENT_ID", "")
+CMA_DIGEST_AGENT_ID = env("HARNESS2_CMA_DIGEST_AGENT_ID", "")
+CMA_VAULT_ID = env("HARNESS2_CMA_VAULT_ID", "")
 RADAR_GOLD_DIR = env("HARNESS2_RADAR_GOLD_DIR", "")
 RADAR_JUDGE_MODEL = JUDGE_MODEL or CA_REVIEW_MODEL
 

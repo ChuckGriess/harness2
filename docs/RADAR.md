@@ -47,6 +47,9 @@ harness2-radar --send runs/radar/digests/2026-10-18.md --deliver email
 The sandbox has no SMTP egress, so send email from the host with `--send`. Slack works inside
 the sandbox when the proxy's delivery list is switched on (see below).
 
+The scheduled digest on Claude Managed Agents is the one exception: that agent posts to Slack
+itself (see "Claude Managed Agents" below).
+
 ## Improving the agent with Harness²
 
 The benchmark grades a digest against a gold list of must-know items for that week and
@@ -119,6 +122,72 @@ RADAR_DELIVERY_ALLOWLIST=./proxy/delivery.txt \
 - Credentials come from `../.env` at run time. The image contains no secrets and no `.env`;
   `.dockerignore` admits only the package, `pyproject.toml` and `scripts/radar_gold.py`.
 
+## Claude Managed Agents (`cma`)
+
+The `cma` substrate runs each rollout as a Managed Agents session. Anthropic hosts the agent
+loop and a per-session cloud sandbox. It uses the same harness tree, prompts and on-disk
+results as `ca`, so the two substrates score alike. Its namespace is separate
+(`radar-cma-agg<k>`). The improver, selector and judge still run locally.
+
+```bash
+harness2-setup radar --substrate cma      # once: creates the agent + environment, prints ids
+# put HARNESS2_CMA_AGENT_ID and HARNESS2_CMA_ENVIRONMENT_ID in .env
+harness2-radar --substrate cma --topics frontier-applications
+harness2 --bench radar --substrate cma --k 1 --dry-run --max-tasks 1
+harness2 --bench radar --substrate cma --k 1 --max-tasks 1 --only-domains frontier-applications
+harness2-judge  --bench radar --substrate cma --k 1
+harness2-report --bench radar --substrate cma --k 1
+```
+
+- Each rollout uploads the workspace files once per content hash; ids are cached in
+  `<runs>/cma-files.json`.
+- The rollout sends its candidate harness as a per-session system-prompt override, followed by
+  a fixed runtime note. That note maps `run_script`, `load_skill` and `write_file` onto the
+  managed bash/read/write tools.
+- The digest is written to `/mnt/session/outputs/` and downloaded into
+  `workspace/output/`. Each run prints a Console link; set `HARNESS2_CMA_WORKSPACE` if your
+  API key is not in the Default workspace.
+- Caps:
+  - The per-rollout $ cap is a hard session budget (`HARNESS2_CA_MAX_USD_CENTS`).
+  - Turns, searches, fetches and wall time are counted client-side; reaching any of them sends
+    an interrupt.
+  - Tool calls that pause for approval are denied.
+- **Accepted risk: unrestricted egress** (decided 2026-10-22).
+  - The sandbox, including improver-written scripts, can reach any host apart from
+    Anthropic's safety blocklist. `docker/proxy/allowlist.txt` does not apply here.
+  - No credential is ever attached to a rollout session.
+  - Gold lists are never uploaded.
+
+### Scheduled daily digest
+
+`--promote` publishes a harness as the separate `radar-digest` agent, with one daily
+deployment per topic. That agent posts its own section to Slack.
+
+```bash
+# a Slack bot token with chat:write, invited to one channel
+HARNESS2_RADAR_SLACK_BOT_TOKEN=... harness2-radar --vault-setup   # prints the vault id
+# put HARNESS2_CMA_VAULT_ID and HARNESS2_RADAR_SLACK_CHANNEL (channel id) in .env
+harness2-radar --promote <adopted harness dir> --cron "0 7 * * *" --tz America/Chicago
+harness2-radar --runs                                             # recent runs and errors
+```
+
+- **Accepted risk: the agent sends** (decided 2026-10-22).
+  - The bot token lives in a vault. It is substituted at egress for `slack.com` only, in
+    request headers only, and never enters the sandbox.
+  - The vault is attached to the digest deployments only.
+  - Each run has the same hard dollar budget.
+  - Scope the token to `chat:write` and invite the bot to one channel only.
+- Re-running `--promote` updates the agent (a new version) and repoints every deployment at
+  it. Pause a deployment from the Console. Nothing here archives or deletes resources.
+- Each scheduled run covers the 7 days ending on its run date. Email still goes from the host
+  with `--send`.
+
+Configuration names (values go in `.env`, never in the repo):
+
+- Ids: `HARNESS2_CMA_AGENT_ID`, `HARNESS2_CMA_ENVIRONMENT_ID`, `HARNESS2_CMA_DIGEST_AGENT_ID`,
+  `HARNESS2_CMA_VAULT_ID`, `HARNESS2_CMA_WORKSPACE`.
+- Slack: `HARNESS2_RADAR_SLACK_BOT_TOKEN`, `HARNESS2_RADAR_SLACK_CHANNEL`.
+
 ## Costs
 
 Rollout cost is estimated from token usage and `config.CLAUDE_PRICES` (Sonnet 5.5: $2 input,
@@ -126,4 +195,5 @@ $10 output, $0.10 cache read per million tokens; Opus 5.5, the improver, selecto
 default, is twice that; web search $10 per 1,000) and written to each
 run's `result.json` and the digest footer. Per-rollout caps: 60 turns, $3, 20 searches; the
 improver session cap is $5. Core's ledger does not total rollout cost; read it from
-`result.json`.
+`result.json`. On `cma`, `cost_usd` is the session's reported list cost instead: tokens, web
+searches, plus $0.08 per hour of session runtime.

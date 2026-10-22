@@ -143,6 +143,16 @@
       "decision": "Reuse install_mode 'workspace_agents_md' for 'ca' instead of adding a new mode",
       "why": "Same semantics (tree staged into the workspace, always-on files composed into the system prompt). This avoids editing INSTALL_MODES in core/spec.py.",
       "rejected": "A new 'claude_api' install mode: a core edit with no behavioral difference."
+    },
+    {
+      "decision": "2026-10-22, supersedes decision 4 for the new `cma` substrate: run executor rollouts as Claude Managed Agents sessions in an unrestricted cloud environment (`ca` and its Docker sandbox stay the default)",
+      "why": "Your choice. Anthropic hosts the loop and the per-session sandbox, so there is no local compose to maintain. Unrestricted networking keeps web_search/web_fetch at today's open-web reach; under `limited` networking the environment allowlist would also restrict them. Radar gold is private and never uploaded, so the open web cannot leak answers. Caps carry over: USD as a platform-enforced session budget; turns, searches, fetches and wall time counted client-side and ended with user.interrupt.",
+      "rejected": "`limited` networking with allowlist.txt: also fences the web tools, which changes what the agent can read and makes scores incomparable with `ca`. A self-hosted worker inside the existing Docker sandbox: keeps the fence, but you host the compute."
+    },
+    {
+      "decision": "2026-10-22, supersedes decision 6 for the scheduled digest only: the `radar-digest` Managed Agent posts its own section to Slack via chat.postMessage, with a bot token held in a vault",
+      "why": "Your choice: a fully hands-off daily digest. The token is an environment_variable vault credential: it is substituted at egress for slack.com only, in headers only, and never enters the sandbox. The vault is attached to the digest deployments and never to optimisation rollouts, so recursion cannot post. Each session runs under a hard dollar budget, and the delivery instruction is fixed, non-editable text naming one channel.",
+      "rejected": "Host pickup (a cron job downloads session outputs and posts them through the existing --deliver code): keeps host-only delivery but needs a host job. Incoming-webhook URLs: the secret sits in the URL path, which egress substitution cannot fill."
     }
   ],
   "diagrams": [
