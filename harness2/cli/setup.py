@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Install a benchmark's pinned tools, runner overlays, dependencies, and data."""
+"""Install a benchmark's pinned tools, runner overlays, dependencies, and data.
+
+`radar --substrate cma` installs nothing locally: it creates (or updates in place) the Claude
+Managed Agents executor agent and cloud environment that `cma` rollouts reference by id, and
+prints the two ids for .env. It is the only place those resources are created.
+"""
 
 from __future__ import annotations
 
@@ -23,20 +28,43 @@ import subprocess
 from harness2 import config, install
 
 
-def main(argv=None):
+def _setup_cma(dry: bool, client=None) -> int:
+    if dry:
+        print("Would create or update the harness2-radar-executor agent "
+              f"({config.CA_MODEL}, effort {config.CA_EFFORT}) and its unrestricted cloud "
+              "environment on Claude Managed Agents.")
+        return 0
+    from harness2.substrate.managed_agents import setup_resources
+
+    agent, env = setup_resources(client or config.require_anthropic().Anthropic())
+    print(f"agent {agent['id']} v{agent.get('version')}, environment {env['id']}\n"
+          f"set in .env:\n  HARNESS2_CMA_AGENT_ID={agent['id']}\n"
+          f"  HARNESS2_CMA_ENVIRONMENT_ID={env['id']}")
+    return 0
+
+
+def main(argv=None, *, client=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("benchmark", choices=("jb", "lab", "wb"))
+    p.add_argument("benchmark", choices=("jb", "lab", "wb", "radar"))
     p.add_argument(
         "--subset",
         choices=("office", "web", "code"),
         default=None,
         help="wb only: one subset to install; omitted installs office, web, and code",
     )
-    p.add_argument("--substrate", choices=("oc", "cx"), default="oc")
+    p.add_argument("--substrate", choices=("oc", "cx", "cma"), default="oc")
     p.add_argument("--dry-run", action="store_true")
     args = p.parse_args(argv)
     if args.subset and args.benchmark != "wb":
         p.error("--subset only applies to wb")
+    if (args.benchmark == "radar") != (args.substrate == "cma"):
+        p.error("radar setup is `harness2-setup radar --substrate cma` (the ca substrate needs "
+                "no setup); cma applies to radar only")
+    if args.benchmark == "radar":
+        try:
+            return _setup_cma(args.dry_run, client)
+        except (config.ConfigError, RuntimeError, ValueError, OSError) as exc:
+            p.exit(1, f"setup failed: {exc}\n")
     dry = args.dry_run
     missing = install.missing_runners()
     if missing and not dry:

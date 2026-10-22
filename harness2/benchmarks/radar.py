@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""AI Radar: a watchlist-driven research digest benchmark on the `ca` substrate.
+"""AI Radar: a watchlist-driven research digest benchmark on the `ca` or `cma` substrate.
 
 A task is one closed Monday-Sunday window x one watchlist topic, id `<since>/<topic>`; the
 deliverable is output/digest.md. Gold lists live outside the repo, under
@@ -40,7 +40,10 @@ from ..core import runmark as RM
 from ..core.spec import BenchPrompts, BenchSpec, resolve_channel_model
 from ..substrate.base import Install, RunRequest
 from ..substrate.claude_api import OUTPUT, RESULT, TRAJECTORY, WORKSPACE, CaSubstrate
+from ..substrate.managed_agents import CmaSubstrate
 from .tasks import select
+
+SUBSTRATES = {"ca": CaSubstrate, "cma": CmaSubstrate}
 
 DATA = Path(__file__).resolve().parent / "radar_data"
 DIGEST = "digest.md"
@@ -142,10 +145,26 @@ def window_of(task_id: str) -> tuple[date, date]:
 
 def render_prompt(topic: str, since: date, until: date, *, label: str = "") -> str:
     """The task as the agent receives it: topic, inclusive window and the watchlist."""
+    return _task_text(label or f"{since}/{topic}", topic, f"{since} to {until} (inclusive)")
+
+
+def render_daily_prompt(topic: str, days: int) -> str:
+    """render_prompt for a scheduled run, whose text is fixed when the schedule is created.
+
+    The window is the same rule as `harness2-radar` (the `days` days ending today, inclusive),
+    stated relatively; the agent resolves today's date in its sandbox.
+    """
+    return _task_text(
+        f"daily/{topic}", topic,
+        f"the {days} days ending today, inclusive (run `date -u +%F` for today's date)",
+    )
+
+
+def _task_text(label: str, topic: str, window: str) -> str:
     watchlist = (DATA / "watchlist.md").read_text(encoding="utf-8").strip()
     return (
-        f"# TASK {label or f'{since}/{topic}'}\n"
-        f"Topic: {topic}\nWindow: {since} to {until} (inclusive)\n\n"
+        f"# TASK {label}\n"
+        f"Topic: {topic}\nWindow: {window}\n\n"
         f"Write output/digest.md covering what the watched sources for this topic shipped, "
         f"published or decided in the window. sources.json in the workspace maps each "
         f"person and organization to their feeds, repos and pages.\n\n"
@@ -196,7 +215,7 @@ def _stdlib_problems(rel: str, src: str, siblings: set[str]) -> list[str]:
 
 
 class RadarAdapter:
-    """The BenchmarkAdapter surface for AI Radar, on the `ca` substrate only."""
+    """The BenchmarkAdapter surface for AI Radar, on the `ca` or `cma` substrate."""
 
     def __init__(
         self,
@@ -209,12 +228,15 @@ class RadarAdapter:
         gold_dir: Path | str | None = None,
         runs_root: Path | None = None,
     ):
-        if substrate != "ca":
-            raise ValueError(f"the radar benchmark runs on substrate 'ca' only, got {substrate!r}")
+        if substrate not in SUBSTRATES:
+            raise ValueError(
+                f"the radar benchmark runs on substrates {sorted(SUBSTRATES)}, got {substrate!r}"
+            )
         self.spec = radar_spec()
         if runs_root is not None:
             self.spec = replace(self.spec, runs_root=Path(runs_root))
-        self.substrate = CaSubstrate(launcher=self._launch, client=client)
+        extra = {"cache_dir": self.spec.runs_root} if substrate == "cma" else {}
+        self.substrate = SUBSTRATES[substrate](launcher=self._launch, client=client, **extra)
         self._judge_client = judge_client
         self.timeout = int(timeout or 1800)
         self.split_file = split_file
