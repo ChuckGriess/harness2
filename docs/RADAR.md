@@ -13,7 +13,7 @@ Design and plan: `docs/agex/specs/2026-10-20-ai-radar-claude-sandbox-design.html
 
 | Path | What it is |
 |---|---|
-| `harness2/benchmarks/radar_data/watchlist.md` | Your watchlist and the seven topics. Edit it by hand; the improver never can |
+| `harness2/benchmarks/radar_data/watchlist.md` | Your watchlist and the nine topics. Edit it by hand; the improver never can |
 | `harness2/benchmarks/radar_data/sources.json` | Feeds, repos, pages and search-only voices per person or organization |
 | `harness2/benchmarks/radar_data/radar_tasks.json` | The closed weeks that make up the benchmark (tasks = weeks x topics) |
 | `harness2/benchmarks/radar_data/base/` | The base harness: prompts, triage skill, stdlib fetcher scripts |

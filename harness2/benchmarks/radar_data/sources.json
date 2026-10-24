@@ -1,5 +1,5 @@
 {
- "verified": "2026-10-21",
+ "verified": "2026-10-23",
  "topics": {
   "governance-and-economics": {
    "hn": [
@@ -53,6 +53,21 @@
     "Claude API",
     "Mistral",
     "Llama"
+   ],
+   "arxiv": ""
+  },
+  "anthropic-platform": {
+   "hn": [
+    "Anthropic",
+    "Claude API",
+    "Claude Code"
+   ],
+   "arxiv": ""
+  },
+  "vertical-insurance": {
+   "hn": [
+    "insurtech",
+    "insurance AI"
    ],
    "arxiv": ""
   }
@@ -223,10 +238,7 @@
     "frontier-applications"
    ],
    "feeds": [],
-   "repos": [
-    "anthropics/anthropic-sdk-python",
-    "modelcontextprotocol/modelcontextprotocol"
-   ],
+   "repos": [],
    "pages": [
     "https://www.anthropic.com/news",
     "https://www.anthropic.com/research",
@@ -267,10 +279,7 @@
    "feeds": [
     "https://openai.com/news/rss.xml"
    ],
-   "repos": [
-    "openai/openai-python",
-    "openai/openai-agents-python"
-   ],
+   "repos": [],
    "pages": [
     "https://platform.openai.com/docs/changelog"
    ],
@@ -285,10 +294,7 @@
     "https://deepmind.google/blog/rss.xml",
     "https://developers.googleblog.com/feeds/posts/default/"
    ],
-   "repos": [
-    "googleapis/python-genai",
-    "google/adk-python"
-   ],
+   "repos": [],
    "pages": [
     "https://ai.google.dev/gemini-api/docs/changelog"
    ],
@@ -300,9 +306,7 @@
     "frontier-applications"
    ],
    "feeds": [],
-   "repos": [
-    "meta-llama/llama-stack"
-   ],
+   "repos": [],
    "pages": [
     "https://ai.meta.com/blog/"
    ],
@@ -314,13 +318,135 @@
     "frontier-applications"
    ],
    "feeds": [],
-   "repos": [
-    "mistralai/client-python"
-   ],
+   "repos": [],
    "pages": [
     "https://mistral.ai/news"
    ],
    "search_only": []
+  },
+  {
+   "name": "Anthropic platform",
+   "topics": [
+    "anthropic-platform"
+   ],
+   "feeds": [],
+   "repos": [
+    "anthropics/anthropic-sdk-python",
+    "anthropics/anthropic-sdk-typescript",
+    "anthropics/anthropic-sdk-go",
+    "anthropics/anthropic-sdk-java",
+    "anthropics/anthropic-sdk-ruby",
+    "anthropics/anthropic-sdk-php",
+    "anthropics/anthropic-sdk-csharp",
+    "anthropics/anthropic-cli",
+    "anthropics/claude-code",
+    "anthropics/claude-agent-sdk-python",
+    "anthropics/claude-agent-sdk-typescript",
+    "modelcontextprotocol/modelcontextprotocol"
+   ],
+   "pages": [
+    "https://docs.claude.com/en/release-notes/overview",
+    "https://www.anthropic.com/news"
+   ],
+   "search_only": []
+  },
+  {
+   "name": "Insurance Journal",
+   "topics": [
+    "vertical-insurance"
+   ],
+   "feeds": [
+    "https://www.insurancejournal.com/rss/news/"
+   ],
+   "repos": [],
+   "pages": [
+    "https://www.insurancejournal.com/topics/artificial-intelligence/"
+   ],
+   "search_only": []
+  },
+  {
+   "name": "Carrier Management",
+   "topics": [
+    "vertical-insurance"
+   ],
+   "feeds": [
+    "https://www.carriermanagement.com/feed/"
+   ],
+   "repos": [],
+   "pages": [],
+   "search_only": []
+  },
+  {
+   "name": "Coverager",
+   "topics": [
+    "vertical-insurance"
+   ],
+   "feeds": [
+    "https://coverager.com/feed/"
+   ],
+   "repos": [],
+   "pages": [],
+   "search_only": []
+  },
+  {
+   "name": "Digital Insurance",
+   "topics": [
+    "vertical-insurance"
+   ],
+   "feeds": [],
+   "repos": [],
+   "pages": [
+    "https://www.dig-in.com/"
+   ],
+   "search_only": []
+  },
+  {
+   "name": "Vertafore",
+   "topics": [
+    "vertical-insurance"
+   ],
+   "feeds": [],
+   "repos": [],
+   "pages": [
+    "https://www.vertafore.com/news"
+   ],
+   "search_only": []
+  },
+  {
+   "name": "Guidewire",
+   "topics": [
+    "vertical-insurance"
+   ],
+   "feeds": [],
+   "repos": [],
+   "pages": [],
+   "search_only": [
+    "Guidewire AI announcement"
+   ]
+  },
+  {
+   "name": "Duck Creek",
+   "topics": [
+    "vertical-insurance"
+   ],
+   "feeds": [],
+   "repos": [],
+   "pages": [],
+   "search_only": [
+    "Duck Creek Technologies AI announcement"
+   ]
+  },
+  {
+   "name": "Applied Systems",
+   "topics": [
+    "vertical-insurance"
+   ],
+   "feeds": [],
+   "repos": [],
+   "pages": [],
+   "search_only": [
+    "Applied Systems AI agency announcement"
+   ]
   }
  ]
 }
