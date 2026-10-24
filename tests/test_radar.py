@@ -86,7 +86,7 @@ class RadarTests(unittest.TestCase):
 
     def test_task_table_and_watchlist_consistency(self):
         tasks = radar.RadarAdapter().tasks()
-        self.assertEqual(len(tasks), 21)
+        self.assertEqual(len(tasks), 24)
         self.assertEqual(radar.topics(), radar.RadarAdapter().reference_domain_order())
         data = json.loads((radar.DATA / "sources.json").read_text())
         watch = (radar.DATA / "watchlist.md").read_text()

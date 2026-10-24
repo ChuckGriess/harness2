@@ -78,6 +78,17 @@ Lens: Tim O'Reilly. Track tools and voices that spread capability across the eco
   Lens fit: Application, not hype. Leave out leaderboard claims, funding news and speculation.
   Follow: SDK and agent-framework release notes, developer blogs and changelogs
 
+## Additions agreed 2026-10-23
+
+The frontier topic was split in two. SDK releases moved out of frontier-applications; every
+Anthropic release, SDKs included, now has its own topic because InTech Ideas is an Anthropic
+partner. (A vertical-insurance topic was tried and dropped on 2026-10-24: out of scope.)
+
+- **Anthropic platform**
+  Focus: Every Anthropic release: API versions, all Anthropic SDKs and the CLI, Claude Code, the Agent SDK, Managed Agents, model launches and deprecations, MCP
+  Lens fit: Partner duty. Completeness matters more than selectivity here.
+  Follow: Claude release notes, Anthropic news, GitHub releases of the anthropics SDK and Claude Code repos
+
 ## Topics
 
 - governance-and-economics: AI economics, governance, disclosure standards, the human-AI economy
@@ -86,4 +97,5 @@ Lens: Tim O'Reilly. Track tools and voices that spread capability across the eco
 - agents-and-workflows: agentic workflows, decision intelligence, real-world workplace productivity
 - safety-and-interpretability: interpretability, alignment and safety work that informs practice
 - enterprise-data-and-ai: data infrastructure, pipelines and applied enterprise AI
-- frontier-applications: frontier-lab releases that change what practitioners can build now
+- frontier-applications: frontier-lab releases that change what practitioners can build now (model launches, new API features, agent platforms, developer tools; no SDK version releases, customer stories or policy)
+- anthropic-platform: every Anthropic release, SDK releases included

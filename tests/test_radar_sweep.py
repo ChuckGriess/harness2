@@ -187,7 +187,7 @@ class RadarSweepTests(unittest.TestCase):
                                  "--dry-run", "--max-tasks", "1"])
         self.assertEqual(rc, 0)
         self.assertIn("radar-ca-agg1", out.getvalue())
-        self.assertIn("# 7 tasks over 7 domains", out.getvalue())
+        self.assertIn("# 8 tasks over 8 domains", out.getvalue())
 
     def test_identity_records_ca_models_and_blocks_a_model_change(self):
         a = radar.RadarAdapter(runs_root=self.root / "runs")
