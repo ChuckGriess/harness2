@@ -18,6 +18,3 @@ www.databricks.com
 openai.com
 deepmind.google
 developers.googleblog.com
-www.insurancejournal.com
-www.carriermanagement.com
-coverager.com

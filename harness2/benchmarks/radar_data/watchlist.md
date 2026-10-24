@@ -80,24 +80,14 @@ Lens: Tim O'Reilly. Track tools and voices that spread capability across the eco
 
 ## Additions agreed 2026-10-23
 
-The frontier topic was split in three. SDK releases moved out of frontier-applications; every
+The frontier topic was split in two. SDK releases moved out of frontier-applications; every
 Anthropic release, SDKs included, now has its own topic because InTech Ideas is an Anthropic
-partner, and insurance gets a vertical topic.
+partner. (A vertical-insurance topic was tried and dropped on 2026-10-24: out of scope.)
 
 - **Anthropic platform**
   Focus: Every Anthropic release: API versions, all Anthropic SDKs and the CLI, Claude Code, the Agent SDK, Managed Agents, model launches and deprecations, MCP
   Lens fit: Partner duty. Completeness matters more than selectivity here.
   Follow: Claude release notes, Anthropic news, GitHub releases of the anthropics SDK and Claude Code repos
-
-- **Insurance Journal / Carrier Management / Coverager / Digital Insurance**
-  Focus: Insurance trade press: AI at carriers, agencies and brokers, insurtech launches
-  Lens fit: Vertical solutions, especially for insurance agencies. Customer stories count when they are in insurance.
-  Follow: Their news feeds and AI coverage
-
-- **Vertafore / Guidewire / Duck Creek / Applied Systems**
-  Focus: Agency-management and core-system vendors shipping AI features
-  Lens fit: What an agency or carrier can actually adopt
-  Follow: Vertafore news; the other three by search (their newsrooms block automated reads)
 
 ## Topics
 
@@ -109,4 +99,3 @@ partner, and insurance gets a vertical topic.
 - enterprise-data-and-ai: data infrastructure, pipelines and applied enterprise AI
 - frontier-applications: frontier-lab releases that change what practitioners can build now (model launches, new API features, agent platforms, developer tools; no SDK version releases, customer stories or policy)
 - anthropic-platform: every Anthropic release, SDK releases included
-- vertical-insurance: AI applied to insurance: carriers, agencies, insurtech and core-system vendors, including customer stories in the vertical

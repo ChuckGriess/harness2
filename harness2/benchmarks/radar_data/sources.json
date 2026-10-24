@@ -63,13 +63,6 @@
     "Claude Code"
    ],
    "arxiv": ""
-  },
-  "vertical-insurance": {
-   "hn": [
-    "insurtech",
-    "insurance AI"
-   ],
-   "arxiv": ""
   }
  },
  "entities": [
@@ -242,7 +235,7 @@
    "pages": [
     "https://www.anthropic.com/news",
     "https://www.anthropic.com/research",
-    "https://docs.claude.com/en/release-notes/overview"
+    "https://platform.claude.com/docs/en/release-notes/overview"
    ],
    "search_only": []
   },
@@ -345,108 +338,11 @@
     "modelcontextprotocol/modelcontextprotocol"
    ],
    "pages": [
-    "https://docs.claude.com/en/release-notes/overview",
-    "https://www.anthropic.com/news"
+    "https://platform.claude.com/docs/en/release-notes/overview",
+    "https://www.anthropic.com/news",
+    "https://claude.com/blog"
    ],
    "search_only": []
-  },
-  {
-   "name": "Insurance Journal",
-   "topics": [
-    "vertical-insurance"
-   ],
-   "feeds": [
-    "https://www.insurancejournal.com/rss/news/"
-   ],
-   "repos": [],
-   "pages": [
-    "https://www.insurancejournal.com/topics/artificial-intelligence/"
-   ],
-   "search_only": []
-  },
-  {
-   "name": "Carrier Management",
-   "topics": [
-    "vertical-insurance"
-   ],
-   "feeds": [
-    "https://www.carriermanagement.com/feed/"
-   ],
-   "repos": [],
-   "pages": [],
-   "search_only": []
-  },
-  {
-   "name": "Coverager",
-   "topics": [
-    "vertical-insurance"
-   ],
-   "feeds": [
-    "https://coverager.com/feed/"
-   ],
-   "repos": [],
-   "pages": [],
-   "search_only": []
-  },
-  {
-   "name": "Digital Insurance",
-   "topics": [
-    "vertical-insurance"
-   ],
-   "feeds": [],
-   "repos": [],
-   "pages": [
-    "https://www.dig-in.com/"
-   ],
-   "search_only": []
-  },
-  {
-   "name": "Vertafore",
-   "topics": [
-    "vertical-insurance"
-   ],
-   "feeds": [],
-   "repos": [],
-   "pages": [
-    "https://www.vertafore.com/news"
-   ],
-   "search_only": []
-  },
-  {
-   "name": "Guidewire",
-   "topics": [
-    "vertical-insurance"
-   ],
-   "feeds": [],
-   "repos": [],
-   "pages": [],
-   "search_only": [
-    "Guidewire AI announcement"
-   ]
-  },
-  {
-   "name": "Duck Creek",
-   "topics": [
-    "vertical-insurance"
-   ],
-   "feeds": [],
-   "repos": [],
-   "pages": [],
-   "search_only": [
-    "Duck Creek Technologies AI announcement"
-   ]
-  },
-  {
-   "name": "Applied Systems",
-   "topics": [
-    "vertical-insurance"
-   ],
-   "feeds": [],
-   "repos": [],
-   "pages": [],
-   "search_only": [
-    "Applied Systems AI agency announcement"
-   ]
   }
  ]
 }
